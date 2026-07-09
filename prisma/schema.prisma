@@ -1,0 +1,351 @@
+// Switchback — source-of-truth schema (PRD §12)
+// Neon Postgres · Prisma 7 (prisma-client generator, driver adapters)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Enums ----------
+
+enum ResumeVersionType {
+  MASTER
+  PLATFORM_DEVSECOPS
+  CLOUD_INFRASTRUCTURE
+  SOFTWARE_AI
+  CYBERSECURITY
+}
+
+enum ContentStatus {
+  DRAFT
+  READY
+  PUBLISHED
+}
+
+enum FitClassification {
+  STRONG_FIT
+  STRETCH_FIT
+  BRIDGE_ROLE
+  NOT_WORTH_IT
+}
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  FOLLOW_UP_NEEDED
+  INTERVIEWING
+  REJECTED
+  OFFER
+  ACCEPTED
+  PASSED
+}
+
+// Honest project labels — a core credibility rule (PRD §6, §16)
+enum ProjectStatus {
+  PLANNED
+  IN_PROGRESS
+  PROTOTYPE
+  IMPLEMENTED
+  TESTED
+  DEPLOYED
+  COMPLETED
+}
+
+enum ReflectionType {
+  WEEKLY_CHECKIN
+  DECISION
+  BLOCKER
+  OPPORTUNITY
+  PROJECT_NOTE
+  INTERVIEW_REFLECTION
+  APPLICATION_REFLECTION
+}
+
+enum MemoryCategory {
+  POSITIONING
+  PREFERENCE
+  CONSTRAINT
+  PROJECT
+  RESUME_RULE
+  JOB_SEARCH_RULE
+  PORTFOLIO_RULE
+  INTERVIEW_RULE
+}
+
+enum DecisionType {
+  APPLY
+  PASS
+  TAILOR_RESUME
+  PRIORITIZE_PROJECT
+  ACCEPT_OFFER
+  REJECT_OFFER
+  PROJECT_FOCUS
+}
+
+// ---------- Models ----------
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  location  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  careerProfile      CareerProfile?
+  resumeVersions     ResumeVersion[]
+  jobAnalyses        JobAnalysis[]
+  applications       Application[]
+  projects           Project[]
+  caseStudies        CaseStudy[]
+  interviewStories   InterviewStory[]
+  careerReflections  CareerReflection[]
+  careerMemories     CareerMemory[]
+  strategicDecisions StrategicDecision[]
+  agentOutputs       AgentOutput[]
+
+  @@map("users")
+}
+
+model CareerProfile {
+  id               String   @id @default(cuid())
+  userId           String   @unique @map("user_id")
+  primaryHeadline  String   @map("primary_headline")
+  corePositioning  String   @map("core_positioning")
+  coreStory        String   @map("core_story")
+  portfolioTagline String?  @map("portfolio_tagline")
+  linkedinHeadline String?  @map("linkedin_headline")
+  targetRoles      Json     @default("[]") @map("target_roles")
+  bridgeRoles      Json     @default("[]") @map("bridge_roles")
+  skills           Json     @default("[]")
+  credibilityRules Json     @default("[]") @map("credibility_rules")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("career_profiles")
+}
+
+model ResumeVersion {
+  id        String            @id @default(cuid())
+  userId    String            @map("user_id")
+  name      String
+  type      ResumeVersionType
+  content   String?
+  status    ContentStatus     @default(DRAFT)
+  sourceUrl String?           @map("source_url")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobAnalyses  JobAnalysis[]
+  applications Application[]
+
+  @@unique([userId, type])
+  @@map("resume_versions")
+}
+
+model JobAnalysis {
+  id                         String             @id @default(cuid())
+  userId                     String             @map("user_id")
+  company                    String
+  roleTitle                  String             @map("role_title")
+  jobDescription             String             @map("job_description")
+  sourceUrl                  String?            @map("source_url")
+  salaryRange                String?            @map("salary_range")
+  location                   String?
+  fitClassification          FitClassification? @map("fit_classification")
+  recommendedResumeVersionId String?            @map("recommended_resume_version_id")
+  skillsToEmphasize          Json               @default("[]") @map("skills_to_emphasize")
+  gaps                       Json               @default("[]")
+  tailoredSummary            String?            @map("tailored_summary")
+  interviewTalkingPoints     Json               @default("[]") @map("interview_talking_points")
+  recommendation             String?
+  createdAt                  DateTime           @default(now()) @map("created_at")
+  updatedAt                  DateTime           @updatedAt @map("updated_at")
+
+  user                     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recommendedResumeVersion ResumeVersion? @relation(fields: [recommendedResumeVersionId], references: [id], onDelete: SetNull)
+  applications             Application[]
+  agentOutputs             AgentOutput[]
+
+  @@map("job_analyses")
+}
+
+model Application {
+  id                String             @id @default(cuid())
+  userId            String             @map("user_id")
+  company           String
+  roleTitle         String             @map("role_title")
+  roleFamily        String?            @map("role_family")
+  resumeVersionId   String?            @map("resume_version_id")
+  jobAnalysisId     String?            @map("job_analysis_id")
+  dateApplied       DateTime?          @map("date_applied")
+  source            String?
+  contact           String?
+  status            ApplicationStatus  @default(SAVED)
+  followUpDate      DateTime?          @map("follow_up_date")
+  salaryRange       String?            @map("salary_range")
+  link              String?
+  notes             String?
+  fitClassification FitClassification? @map("fit_classification")
+  decisionReasoning String?            @map("decision_reasoning")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resumeVersion    ResumeVersion?     @relation(fields: [resumeVersionId], references: [id], onDelete: SetNull)
+  jobAnalysis      JobAnalysis?       @relation(fields: [jobAnalysisId], references: [id], onDelete: SetNull)
+  interviewStories InterviewStory[]
+  reflections      CareerReflection[]
+  agentOutputs     AgentOutput[]
+
+  @@map("applications")
+}
+
+model Project {
+  id            String        @id @default(cuid())
+  userId        String        @map("user_id")
+  name          String
+  slug          String        @unique
+  status        ProjectStatus @default(PLANNED)
+  summary       String?
+  problem       String?
+  solution      String?
+  stack         Json          @default("[]")
+  role          String?
+  careerSignal  String?       @map("career_signal")
+  githubUrl     String?       @map("github_url")
+  portfolioUrl  String?       @map("portfolio_url")
+  nextMilestone String?       @map("next_milestone")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  caseStudies      CaseStudy[]
+  interviewStories InterviewStory[]
+  reflections      CareerReflection[]
+  agentOutputs     AgentOutput[]
+
+  @@map("projects")
+}
+
+model CaseStudy {
+  id           String        @id @default(cuid())
+  userId       String        @map("user_id")
+  projectId    String        @map("project_id")
+  title        String
+  status       ContentStatus @default(DRAFT)
+  problem      String?
+  solution     String?
+  stack        String?
+  architecture String?
+  challenges   String?
+  outcome      String?
+  nextSteps    String?       @map("next_steps")
+  careerSignal String?       @map("career_signal")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("case_studies")
+}
+
+model InterviewStory {
+  id                 String   @id @default(cuid())
+  userId             String   @map("user_id")
+  projectId          String?  @map("project_id")
+  applicationId      String?  @map("application_id")
+  title              String
+  situation          String
+  task               String
+  action             String
+  result             String
+  skillsDemonstrated Json     @default("[]") @map("skills_demonstrated")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@map("interview_stories")
+}
+
+model CareerReflection {
+  id                   String         @id @default(cuid())
+  userId               String         @map("user_id")
+  reflectionType       ReflectionType @map("reflection_type")
+  title                String
+  body                 String
+  mood                 String?
+  relatedProjectId     String?        @map("related_project_id")
+  relatedApplicationId String?        @map("related_application_id")
+  createdAt            DateTime       @default(now()) @map("created_at")
+
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedProject     Project?     @relation(fields: [relatedProjectId], references: [id], onDelete: SetNull)
+  relatedApplication Application? @relation(fields: [relatedApplicationId], references: [id], onDelete: SetNull)
+
+  @@map("career_reflections")
+}
+
+model CareerMemory {
+  id         String         @id @default(cuid())
+  userId     String         @map("user_id")
+  key        String
+  value      String
+  category   MemoryCategory
+  source     String?
+  confidence String?
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@map("career_memories")
+}
+
+model StrategicDecision {
+  id                String       @id @default(cuid())
+  userId            String       @map("user_id")
+  decisionType      DecisionType @map("decision_type")
+  context           String
+  optionsConsidered Json         @default("[]") @map("options_considered")
+  decision          String
+  reasoning         String?
+  tradeoffs         String?
+  nextAction        String?      @map("next_action")
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("strategic_decisions")
+}
+
+model AgentOutput {
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  outputType           String   @map("output_type")
+  title                String
+  content              String
+  relatedProjectId     String?  @map("related_project_id")
+  relatedApplicationId String?  @map("related_application_id")
+  relatedJobAnalysisId String?  @map("related_job_analysis_id")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedProject     Project?     @relation(fields: [relatedProjectId], references: [id], onDelete: SetNull)
+  relatedApplication Application? @relation(fields: [relatedApplicationId], references: [id], onDelete: SetNull)
+  relatedJobAnalysis JobAnalysis? @relation(fields: [relatedJobAnalysisId], references: [id], onDelete: SetNull)
+
+  @@map("agent_outputs")
+}
