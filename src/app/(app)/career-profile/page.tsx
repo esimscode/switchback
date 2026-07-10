@@ -19,12 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Separator } from "@/components/ui/separator";
+import { auth } from "@/lib/auth/server";
 import { prisma } from "@/lib/db";
-import {
-  CONTENT_STATUS_LABELS,
-
-  asStringArray,
-} from "@/lib/labels";
+import { CONTENT_STATUS_LABELS, asStringArray } from "@/lib/labels";
 import { getUser } from "@/lib/user";
 
 export const metadata = { title: "Career Profile" };
@@ -32,13 +30,15 @@ export const dynamic = "force-dynamic";
 
 export default async function CareerProfilePage() {
   const user = await getUser();
-  const [profile, resumeVersions] = await Promise.all([
+  const [profile, resumeVersions, { data: session }] = await Promise.all([
     prisma.careerProfile.findUnique({ where: { userId: user.id } }),
     prisma.resumeVersion.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "asc" },
     }),
+    auth.getSession(),
   ]);
+  const headshot = session?.user?.image ?? null;
 
   if (!profile) {
     return (
@@ -52,14 +52,25 @@ export default async function CareerProfilePage() {
     );
   }
 
-  const badgeSection = (title: string, items: string[]) => (
+  // Pill treatments per DESIGN.md — color as a soft ground, never tinted
+  // text: skills sit on a lime tint, target roles carry a lime outline,
+  // bridge roles stay neutral so the hierarchy reads at a glance.
+  const badgeSection = (
+    title: string,
+    items: string[],
+    badgeClassName?: string,
+  ) => (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-1.5">
         {items.map((item) => (
-          <Badge key={item} variant="secondary">
+          <Badge
+            key={item}
+            variant={badgeClassName ? "outline" : "secondary"}
+            className={badgeClassName}
+          >
             {item}
           </Badge>
         ))}
@@ -72,6 +83,27 @@ export default async function CareerProfilePage() {
       <PageHeader
         title="Career Profile"
         description={`${user.name} · ${user.location ?? ""} · ${user.email}`}
+        leading={
+          headshot ? (
+            // eslint-disable-next-line @next/next/no-img-element -- data URL from Neon Auth, not an optimizable remote asset
+            <img
+              src={headshot}
+              alt={`${user.name}'s headshot`}
+              className="size-10 shrink-0 rounded-full border object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-block-lime text-sm font-semibold text-black"
+            >
+              {user.name
+                .split(/\s+/)
+                .map((part) => part[0])
+                .slice(0, 2)
+                .join("")}
+            </span>
+          )
+        }
         actions={
           <Button asChild size="sm">
             <Link href="/career-profile/edit">
@@ -87,8 +119,11 @@ export default async function CareerProfilePage() {
             <CardDescription>{profile.primaryHeadline}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            <p>{profile.corePositioning}</p>
-            <p className="text-muted-foreground">{profile.coreStory}</p>
+            <p className="max-w-prose">{profile.corePositioning}</p>
+            <p className="max-w-prose text-muted-foreground">
+              {profile.coreStory}
+            </p>
+            <Separator />
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
                 <p className="eyebrow text-muted-foreground">
@@ -106,9 +141,17 @@ export default async function CareerProfilePage() {
           </CardContent>
         </Card>
 
-        {badgeSection("Target roles", asStringArray(profile.targetRoles))}
+        {badgeSection(
+          "Target roles",
+          asStringArray(profile.targetRoles),
+          "border-block-lime/80 dark:border-block-lime/50",
+        )}
         {badgeSection("Bridge roles", asStringArray(profile.bridgeRoles))}
-        {badgeSection("Skills", asStringArray(profile.skills))}
+        {badgeSection(
+          "Skills",
+          asStringArray(profile.skills),
+          "border-transparent bg-block-lime/45 text-foreground dark:bg-block-lime/20",
+        )}
 
         <Card>
           <CardHeader>

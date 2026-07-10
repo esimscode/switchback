@@ -108,11 +108,18 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-1">
+          <SidebarMenuItem className="flex items-center gap-1 group-data-[collapsible=icon]:justify-center">
+            {/* Icon mode gets an avatar-only trigger; the full trigger's
+                name + chevron don't fit the rail. */}
+            <UserButton
+              size="icon"
+              variant="ghost"
+              className="hidden size-8 group-data-[collapsible=icon]:flex"
+            />
             <UserButton
               size="default"
               variant="ghost"
-              className="h-10 min-w-0 flex-1 justify-start px-2 group-data-[collapsible=icon]:px-0"
+              className="h-10 min-w-0 flex-1 justify-start px-2 group-data-[collapsible=icon]:hidden"
             />
             <ModeToggle className="group-data-[collapsible=icon]:hidden" />
           </SidebarMenuItem>
