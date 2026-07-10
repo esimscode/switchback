@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeDollarSign,
+  CalendarDays,
+  ExternalLink,
+  FileText,
+  MapPin,
+} from "lucide-react";
 
 import { CopyButton } from "@/components/copy-button";
 import { FitBadge } from "@/components/fit-badge";
@@ -113,7 +120,7 @@ export default async function JobAnalysisPage({
           </CardHeader>
           <CardContent className="space-y-1 text-sm">
             <p className="eyebrow text-muted-foreground">Recommendation</p>
-            <p className="whitespace-pre-line">{analysis.recommendation}</p>
+            <p className="max-w-prose whitespace-pre-line">{analysis.recommendation}</p>
           </CardContent>
         </Card>
 
@@ -220,8 +227,58 @@ export default async function JobAnalysisPage({
           <CardHeader>
             <CardTitle className="text-base">Job description</CardTitle>
           </CardHeader>
-          <CardContent className="max-h-80 overflow-y-auto text-sm text-muted-foreground">
-            <p className="whitespace-pre-line">{analysis.jobDescription}</p>
+          <CardContent className="flex flex-col gap-6 lg:flex-row">
+            {/* Reading column stays prose-width; the freed space carries the facts. */}
+            <div className="max-h-80 min-w-0 flex-1 overflow-y-auto">
+              <p className="max-w-prose whitespace-pre-line text-sm text-muted-foreground">
+                {analysis.jobDescription}
+              </p>
+            </div>
+            <aside className="shrink-0 space-y-3 text-sm lg:w-60 lg:border-l lg:pl-6">
+              <p className="eyebrow text-muted-foreground">At a glance</p>
+              <ul className="space-y-2.5">
+                {analysis.salaryRange ? (
+                  <li className="flex items-start gap-2">
+                    <BadgeDollarSign className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <span>{analysis.salaryRange}</span>
+                  </li>
+                ) : null}
+                {analysis.location ? (
+                  <li className="flex items-start gap-2">
+                    <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <span>{analysis.location}</span>
+                  </li>
+                ) : null}
+                {analysis.recommendedResumeVersion ? (
+                  <li className="flex items-start gap-2">
+                    <FileText className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <span>Lead with {analysis.recommendedResumeVersion.name}</span>
+                  </li>
+                ) : null}
+                <li className="flex items-start gap-2">
+                  <CalendarDays className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <span>
+                    Analyzed{" "}
+                    {new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(
+                      analysis.createdAt,
+                    )}
+                  </span>
+                </li>
+                {analysis.sourceUrl ? (
+                  <li className="flex items-start gap-2">
+                    <ExternalLink className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                    <a
+                      href={analysis.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline-offset-4 hover:underline"
+                    >
+                      Original posting
+                    </a>
+                  </li>
+                ) : null}
+              </ul>
+            </aside>
           </CardContent>
         </Card>
       </div>

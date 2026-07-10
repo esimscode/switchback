@@ -7,6 +7,7 @@ import {
   MessageSquare,
   NotebookPen,
   Plus,
+  Radar,
 } from "lucide-react";
 
 import { FitBadge } from "@/components/fit-badge";
@@ -27,7 +28,11 @@ import {
   REFLECTION_TYPE_LABELS,
   asStringArray,
 } from "@/lib/labels";
+import { findExistingAnalysisIds, isAnalysisStale } from "@/lib/leads";
 import { getUser } from "@/lib/user";
+
+import { LeadsAutoRefresh } from "../leads/lead-actions";
+import { LeadRow } from "../leads/lead-row";
 
 export const metadata = { title: "Dashboard" };
 export const dynamic = "force-dynamic";
@@ -88,8 +93,16 @@ export default async function DashboardPage() {
   const now = new Date();
   const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
 
-  const [profile, applications, projects, reflections, analysesCount] =
-    await Promise.all([
+  const [
+    profile,
+    applications,
+    projects,
+    reflections,
+    analysesCount,
+    jobLeads,
+    newLeadCount,
+    recentlyAnalyzed,
+  ] = await Promise.all([
       prisma.careerProfile.findUnique({ where: { userId: user.id } }),
       prisma.application.findMany({
         where: { userId: user.id, status: { in: [...ACTIVE_STATUSES] } },
@@ -108,6 +121,25 @@ export default async function DashboardPage() {
         take: 3,
       }),
       prisma.jobAnalysis.count({ where: { userId: user.id } }),
+      // Postgres orders enums by declaration, so triageFit asc = strongest first.
+      prisma.jobLead.findMany({
+        where: { userId: user.id, status: { in: ["REVIEWED", "ANALYZING"] } },
+        orderBy: [{ triageFit: "asc" }, { postedAt: { sort: "desc", nulls: "last" } }],
+        take: 5,
+      }),
+      prisma.jobLead.count({ where: { userId: user.id, status: "NEW" } }),
+      // Background analyses that finished recently — the click's payoff.
+      prisma.jobLead.findMany({
+        where: {
+          userId: user.id,
+          status: "PROMOTED",
+          promotedJobAnalysisId: { not: null },
+          updatedAt: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 3,
+        select: { id: true, company: true, roleTitle: true, promotedJobAnalysisId: true },
+      }),
     ]);
 
   const overdueFollowUp = applications.find(
@@ -122,6 +154,8 @@ export default async function DashboardPage() {
     stalledSaved,
     projectWithMilestone,
   });
+  const existingAnalyses = await findExistingAnalysisIds(user.id, jobLeads);
+  const hasAnalyzing = jobLeads.some((lead) => lead.status === "ANALYZING");
 
   return (
     <div className="flex flex-1 flex-col">
@@ -186,6 +220,70 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
+          {/* The sourcing loop's payoff card: brand-lime edge (never a
+              gradient — DESIGN.md) and a ping dot while picks are waiting.
+              Ring, not border: it replaces the Card's own ring-1 edge. */}
+          <Card className="ring-2 ring-block-lime">
+            {hasAnalyzing ? <LeadsAutoRefresh /> : null}
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                {jobLeads.length > 0 ? (
+                  <span className="relative flex size-2.5" aria-hidden>
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-block-lime opacity-75" />
+                    <span className="relative inline-flex size-2.5 rounded-full bg-block-lime" />
+                  </span>
+                ) : (
+                  <Radar className="size-4 text-muted-foreground" aria-hidden />
+                )}
+                Top job picks
+              </CardTitle>
+              <CardDescription>
+                <Link href="/leads" className="underline-offset-4 hover:underline">
+                  View all →
+                </Link>{" "}
+                · triaged by the strategist
+                {newLeadCount > 0 ? ` · ${newLeadCount} awaiting triage` : ""} · runs
+                Mon/Wed/Fri
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {jobLeads.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No reviewed leads right now — the next sourcing run will
+                  surface fresh picks.
+                </p>
+              ) : (
+                <ul className="space-y-4">
+                  {jobLeads.map((lead) => (
+                    <LeadRow
+                      key={lead.id}
+                      lead={lead}
+                      existingAnalysisId={existingAnalyses.get(lead.id)}
+                      stale={isAnalysisStale(lead)}
+                    />
+                  ))}
+                </ul>
+              )}
+              {recentlyAnalyzed.length > 0 ? (
+                <div className="border-t pt-3">
+                  <p className="eyebrow mb-1.5 text-muted-foreground">Recently analyzed</p>
+                  <ul className="space-y-1">
+                    {recentlyAnalyzed.map((lead) => (
+                      <li key={lead.id} className="text-xs">
+                        <Link
+                          href={`/jobs/${lead.promotedJobAnalysisId}`}
+                          className="underline-offset-4 hover:underline"
+                        >
+                          {lead.company} · {lead.roleTitle} →
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Active applications</CardTitle>

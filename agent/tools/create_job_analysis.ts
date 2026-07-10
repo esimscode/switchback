@@ -14,6 +14,10 @@ export default defineTool({
     sourceUrl: z.string().optional(),
     salaryRange: z.string().optional(),
     location: z.string().optional(),
+    jobLeadId: z
+      .string()
+      .optional()
+      .describe("If this analysis came from a sourced job lead, its id — promotes the lead."),
   }),
   async execute(input) {
     const user = await getUser();
@@ -45,10 +49,31 @@ export default defineTool({
       },
     });
 
+    let leadPromoted = false;
+    if (input.jobLeadId) {
+      const { count } = await prisma.jobLead.updateMany({
+        where: { id: input.jobLeadId, userId: user.id },
+        data: { status: "PROMOTED", promotedJobAnalysisId: analysis.id },
+      });
+      leadPromoted = count === 1;
+      if (leadPromoted) {
+        // Lead analyses run in the background — surface completion in the bell.
+        await prisma.notification.create({
+          data: {
+            userId: user.id,
+            type: "analysis_ready",
+            title: `Analysis ready: ${input.roleTitle} · ${input.company}`,
+            href: `/jobs/${analysis.id}`,
+          },
+        });
+      }
+    }
+
     return {
       saved: true,
       id: analysis.id,
       viewAt: `/jobs/${analysis.id}`,
+      ...(input.jobLeadId ? { leadPromoted } : {}),
     };
   },
 });

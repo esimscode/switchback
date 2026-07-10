@@ -1,3 +1,8 @@
+/* Declare the auth-ui layer before Tailwind's layers so utilities beat its
+   `* { border-color: var(--neon-border) }` preflight — otherwise every
+   border-* color utility in the app is silently overridden. */
+@layer neon-auth;
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";

@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   NotebookPen,
+  Radar,
   Settings,
   UserRound,
 } from "lucide-react";
@@ -43,6 +44,7 @@ const navGroups = [
   {
     label: "Job Search",
     items: [
+      { title: "Job Leads", href: "/leads", icon: Radar },
       { title: "Job Analysis", href: "/jobs", icon: Compass },
       { title: "Applications", href: "/applications", icon: Briefcase },
     ],

@@ -68,6 +68,14 @@ enum MemoryCategory {
   INTERVIEW_RULE
 }
 
+enum JobLeadStatus {
+  NEW
+  REVIEWED
+  ANALYZING // background full analysis in flight; promoted by the agent when done
+  DISMISSED
+  PROMOTED
+}
+
 enum DecisionType {
   APPLY
   PASS
@@ -90,6 +98,7 @@ model User {
 
   careerProfile      CareerProfile?
   resumeVersions     ResumeVersion[]
+  jobLeads           JobLead[]
   jobAnalyses        JobAnalysis[]
   applications       Application[]
   projects           Project[]
@@ -99,6 +108,7 @@ model User {
   careerMemories     CareerMemory[]
   strategicDecisions StrategicDecision[]
   agentOutputs       AgentOutput[]
+  notifications      Notification[]
 
   @@map("users")
 }
@@ -168,6 +178,7 @@ model JobAnalysis {
   recommendedResumeVersion ResumeVersion? @relation(fields: [recommendedResumeVersionId], references: [id], onDelete: SetNull)
   applications             Application[]
   agentOutputs             AgentOutput[]
+  jobLead                  JobLead?
 
   @@map("job_analyses")
 }
@@ -343,6 +354,63 @@ model AgentOutput {
   relatedJobAnalysis JobAnalysis? @relation(fields: [relatedJobAnalysisId], references: [id], onDelete: SetNull)
 
   @@map("agent_outputs")
+}
+
+// Sourced job postings awaiting triage. Leads are ephemeral by design:
+// the hygiene sweep hard-deletes non-promoted leads once the posting has
+// expired or stopped appearing at its source (lastSeenAt goes stale).
+// DISMISSED leads are kept while the posting is live so re-fetches don't
+// resurrect them as NEW. Promotion hands off to JobAnalysis, the durable record.
+model JobLead {
+  id            String            @id @default(cuid())
+  userId        String            @map("user_id")
+  source        String // "adzuna" | "greenhouse" | "lever" | "ashby" | "manual"
+  externalId    String?           @map("external_id")
+  // Normalized source+externalId (or canonical URL) hash; upserts key on this.
+  dedupeKey     String            @map("dedupe_key")
+  company       String
+  roleTitle     String            @map("role_title")
+  location      String?
+  salaryRange   String?           @map("salary_range")
+  url           String
+  description   String? // snippet or full text, source-dependent
+  status        JobLeadStatus     @default(NEW)
+  // Cheap one-pass triage against the career profile; full analysis only on promotion.
+  triageFit     FitClassification? @map("triage_fit")
+  triageSummary String?           @map("triage_summary")
+  postedAt      DateTime?         @map("posted_at")
+  expiresAt     DateTime?         @map("expires_at")
+  lastSeenAt    DateTime          @default(now()) @map("last_seen_at")
+  metadata      Json              @default("{}")
+  promotedJobAnalysisId String?   @unique @map("promoted_job_analysis_id")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promotedJobAnalysis JobAnalysis? @relation(fields: [promotedJobAnalysisId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, dedupeKey])
+  @@index([userId, status])
+  @@index([userId, lastSeenAt])
+  @@map("job_leads")
+}
+
+// In-app notifications: background work surfacing to the user (new triaged
+// leads, completed background analyses). Written by agent tools and server
+// actions; the bell in the page header reads them.
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  type      String // "leads_reviewed" | "analysis_ready"
+  title     String
+  href      String?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
 }
 
 // Landing-page waitlist: people interested in a hosted/cloud Switchback.

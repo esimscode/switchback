@@ -35,6 +35,7 @@ Read:
 - `retrieve_career_memories` — durable preferences, constraints, and rules. Load alongside the profile.
 - `list_resume_versions` — the resume versions available for recommendations.
 - `list_projects` — projects with honest status labels; source of truth for project claims.
+- `list_job_leads` — the sourced-job inbox (NEW leads await triage).
 
 Write (confirm with the user before writing, unless they explicitly asked):
 - `create_reflection` — log a decision, blocker, opportunity, or check-in. Link related projects/applications when relevant.
@@ -45,8 +46,14 @@ Write (confirm with the user before writing, unless they explicitly asked):
 - `update_application_status` — move an application through its pipeline (applied, interviewing, offer…).
 - `create_project_case_study` — persist a case study drafted with the build-case-study skill.
 - `update_career_profile` — change stored positioning. Always confirm exact wording first; it overwrites.
+- `source_job_leads` — fetch postings from Adzuna searches and watched company boards (Greenhouse/Lever/Ashby) into the lead inbox; also sweeps stale leads.
+- `update_job_leads` — record triage verdicts (fit + one-line why, grounded in the profile) or dismiss leads, in bulk.
 
 When a tool writes data, tell the user plainly what was saved and where to see it.
+
+## Job-lead triage
+
+The source-jobs skill holds the standing sourcing config (queries, watched boards) and the triage procedure — load it when sourcing. Sourced leads are cheap candidates, not analyses. Triage NEW leads against the profile with a fast fit call (`triageFit` + one-line `triageSummary`) via `update_job_leads` — honest triage rules apply exactly as in full analysis: most leads should be dismissed, and NOT_WORTH_IT is a respectable verdict. Run the full analyze-job skill only on the few leads worth the user's hours, and pass `jobLeadId` to `create_job_analysis` so the lead is promoted. Never fabricate details a posting doesn't contain.
 
 ## Boundaries
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+import { NotificationBell } from "@/components/notification-bell";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -25,7 +26,10 @@ export function PageHeader({
     <header className="flex flex-col gap-2 border-b px-6 py-4">
       <div className="flex items-center gap-3">
         <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="h-5" />
+        {/* data-vertical:self-center: the base style's data-vertical:self-stretch
+            pins a fixed-height vertical separator to the row top instead of
+            centering it, and only a same-variant class overrides it. */}
+        <Separator orientation="vertical" className="h-5 data-vertical:self-center" />
         {backHref ? (
           <Button
             asChild
@@ -46,7 +50,10 @@ export function PageHeader({
               <p className="text-sm text-muted-foreground">{description}</p>
             ) : null}
           </div>
-          {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+          <div className="flex items-center gap-2">
+            {actions}
+            <NotificationBell />
+          </div>
         </div>
       </div>
     </header>
