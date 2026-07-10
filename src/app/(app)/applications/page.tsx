@@ -37,7 +37,7 @@ export default async function ApplicationsPage() {
     prisma.resumeVersion.findMany({
       where: { userId: user.id },
       select: { id: true, name: true },
-      orderBy: { type: "asc" },
+      orderBy: { createdAt: "asc" },
     }),
   ]);
 

@@ -1,11 +1,7 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
 
-import {
-  FIT_TO_PRISMA,
-  RESUME_TYPE_TO_PRISMA,
-  jobAnalysisSchema,
-} from "../lib/analysis-schema";
+import { FIT_TO_PRISMA, jobAnalysisSchema } from "../lib/analysis-schema";
 import { getUser, prisma } from "../lib/db";
 
 export default defineTool({
@@ -21,12 +17,10 @@ export default defineTool({
   }),
   async execute(input) {
     const user = await getUser();
-    const resumeVersion = await prisma.resumeVersion.findUnique({
+    const resumeVersion = await prisma.resumeVersion.findFirst({
       where: {
-        userId_type: {
-          userId: user.id,
-          type: RESUME_TYPE_TO_PRISMA[input.recommendedResumeVersion],
-        },
+        userId: user.id,
+        roleFamily: { equals: input.recommendedResumeVersion, mode: "insensitive" },
       },
     });
 

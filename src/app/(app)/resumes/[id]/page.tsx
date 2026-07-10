@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { prisma } from "@/lib/db";
-import { CONTENT_STATUS_LABELS, RESUME_VERSION_TYPE_LABELS } from "@/lib/labels";
+import { CONTENT_STATUS_LABELS } from "@/lib/labels";
 import { getUser } from "@/lib/user";
 
 import { updateResumeVersion } from "../actions";
@@ -35,7 +35,7 @@ export default async function ResumeVersionPage({
     <div className="flex flex-1 flex-col">
       <PageHeader
         title={resume.name}
-        description={`${RESUME_VERSION_TYPE_LABELS[resume.type]} focus`}
+        description={`${resume.roleFamily} focus`}
         actions={
           <CopyButton text={resume.content ?? ""} label="Copy content" />
         }

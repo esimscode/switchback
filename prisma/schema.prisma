@@ -12,14 +12,6 @@ datasource db {
 
 // ---------- Enums ----------
 
-enum ResumeVersionType {
-  MASTER
-  PLATFORM_DEVSECOPS
-  CLOUD_INFRASTRUCTURE
-  SOFTWARE_AI
-  CYBERSECURITY
-}
-
 enum ContentStatus {
   DRAFT
   READY
@@ -134,9 +126,12 @@ model CareerProfile {
 model ResumeVersion {
   id        String            @id @default(cuid())
   userId    String            @map("user_id")
-  name      String
-  type      ResumeVersionType
-  content   String?
+  name       String
+  // Free-form role family this version targets (e.g. "Master",
+  // "Platform / DevSecOps", "Growth Marketing") — set per user during
+  // onboarding rather than baked into the schema.
+  roleFamily String  @map("role_family")
+  content    String?
   status    ContentStatus     @default(DRAFT)
   sourceUrl String?           @map("source_url")
   createdAt DateTime          @default(now()) @map("created_at")
@@ -146,7 +141,7 @@ model ResumeVersion {
   jobAnalyses  JobAnalysis[]
   applications Application[]
 
-  @@unique([userId, type])
+  @@unique([userId, roleFamily])
   @@map("resume_versions")
 }
 
@@ -348,4 +343,14 @@ model AgentOutput {
   relatedJobAnalysis JobAnalysis? @relation(fields: [relatedJobAnalysisId], references: [id], onDelete: SetNull)
 
   @@map("agent_outputs")
+}
+
+// Landing-page waitlist: people interested in a hosted/cloud Switchback.
+model WaitlistSignup {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("waitlist_signups")
 }

@@ -4,13 +4,9 @@ import { z } from "zod";
 import { prisma } from "../lib/db";
 import { memoryCategories, MEMORY_CATEGORY_TO_PRISMA } from "./retrieve_career_memories";
 
-const RESUME_VERSIONS = [
-  { name: "Master Resume", type: "MASTER" },
-  { name: "Platform-DevSecOps Resume", type: "PLATFORM_DEVSECOPS" },
-  { name: "Cloud-Infrastructure Resume", type: "CLOUD_INFRASTRUCTURE" },
-  { name: "Software-AI Automation Resume", type: "SOFTWARE_AI" },
-  { name: "Cybersecurity Resume", type: "CYBERSECURITY" },
-] as const;
+// Every workspace gets a Master version; targeted versions come from the
+// role families the onboarding interview surfaces for this user.
+const MASTER_FAMILY = "Master";
 
 export default defineTool({
   description:
@@ -24,6 +20,13 @@ export default defineTool({
     coreStory: z.string().min(1).describe("1-2 sentences: where they've been, where they're heading — framed as specializing, never starting over."),
     portfolioTagline: z.string().optional(),
     targetRoles: z.array(z.string()).min(1),
+    resumeRoleFamilies: z
+      .array(z.string().min(1).max(60))
+      .min(1)
+      .max(5)
+      .describe(
+        "Short role-family names for targeted resume versions, derived from the target roles and confirmed with the user (e.g. \"Product Management\", \"Growth Marketing\"). A Master version is always created in addition — don't include it here.",
+      ),
     bridgeRoles: z.array(z.string()).default([]),
     skills: z.array(z.string()).min(1).describe("Only skills the user stated or confirmed."),
     credibilityRules: z
@@ -80,7 +83,15 @@ export default defineTool({
           },
         },
         resumeVersions: {
-          create: RESUME_VERSIONS.map((rv) => ({ name: rv.name, type: rv.type })),
+          create: [
+            { name: "Master Resume", roleFamily: MASTER_FAMILY },
+            ...input.resumeRoleFamilies
+              .filter((family) => family.trim().toLowerCase() !== "master")
+              .map((family) => ({
+                name: `${family.trim()} Resume`,
+                roleFamily: family.trim(),
+              })),
+          ],
         },
         careerMemories: {
           create: input.memories.map((memory) => ({
@@ -97,7 +108,7 @@ export default defineTool({
     return {
       created: true,
       userId: user.id,
-      resumeVersions: RESUME_VERSIONS.length,
+      resumeVersions: 1 + input.resumeRoleFamilies.length,
       memories: input.memories.length,
       next: "The workspace is ready at /dashboard.",
     };

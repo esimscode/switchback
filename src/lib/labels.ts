@@ -5,7 +5,6 @@ import type {
   MemoryCategory,
   ProjectStatus,
   ReflectionType,
-  ResumeVersionType,
 } from "@/generated/prisma/enums";
 
 export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
@@ -34,14 +33,6 @@ export const FIT_CLASSIFICATION_LABELS: Record<FitClassification, string> = {
   STRETCH_FIT: "Stretch fit",
   BRIDGE_ROLE: "Bridge role",
   NOT_WORTH_IT: "Not worth it",
-};
-
-export const RESUME_VERSION_TYPE_LABELS: Record<ResumeVersionType, string> = {
-  MASTER: "Master",
-  PLATFORM_DEVSECOPS: "Platform / DevSecOps",
-  CLOUD_INFRASTRUCTURE: "Cloud / Infrastructure",
-  SOFTWARE_AI: "Software / AI Automation",
-  CYBERSECURITY: "Cybersecurity",
 };
 
 export const CONTENT_STATUS_LABELS: Record<ContentStatus, string> = {

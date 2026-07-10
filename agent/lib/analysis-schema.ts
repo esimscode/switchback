@@ -11,21 +11,15 @@ export const fitClassifications = [
   "not_worth_it",
 ] as const;
 
-export const resumeVersionTypes = [
-  "master",
-  "platform_devsecops",
-  "cloud_infrastructure",
-  "software_ai",
-  "cybersecurity",
-] as const;
-
 export const jobAnalysisSchema = z.object({
   fitClassification: z
     .enum(fitClassifications)
     .describe("Honest fit classification for this role."),
   recommendedResumeVersion: z
-    .enum(resumeVersionTypes)
-    .describe("Which resume version to lead with."),
+    .string()
+    .describe(
+      "Role family of the resume version to lead with. Must exactly match one of the user's existing resume versions (check list_resume_versions) — e.g. \"Master\" or a targeted family.",
+    ),
   resumeReasoning: z
     .string()
     .describe("One or two sentences: why this resume version fits, what to emphasize, what not to overclaim."),
@@ -60,10 +54,3 @@ export const FIT_TO_PRISMA = {
   not_worth_it: "NOT_WORTH_IT",
 } as const;
 
-export const RESUME_TYPE_TO_PRISMA = {
-  master: "MASTER",
-  platform_devsecops: "PLATFORM_DEVSECOPS",
-  cloud_infrastructure: "CLOUD_INFRASTRUCTURE",
-  software_ai: "SOFTWARE_AI",
-  cybersecurity: "CYBERSECURITY",
-} as const;

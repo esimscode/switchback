@@ -11,8 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { prisma } from "@/lib/db";
-import { CONTENT_STATUS_LABELS, RESUME_VERSION_TYPE_LABELS } from "@/lib/labels";
+import { CONTENT_STATUS_LABELS } from "@/lib/labels";
 import { getUser } from "@/lib/user";
+
+import { NewResumeDialog } from "./new-resume-dialog";
 
 export const metadata = { title: "Resumes" };
 export const dynamic = "force-dynamic";
@@ -29,6 +31,7 @@ export default async function ResumesPage() {
       <PageHeader
         title="Resumes"
         description="Targeted versions the strategist recommends per role family."
+        actions={<NewResumeDialog />}
       />
       <div className="p-6">
         <Table>
@@ -51,7 +54,7 @@ export default async function ResumesPage() {
                     {rv.name}
                   </Link>
                 </TableCell>
-                <TableCell>{RESUME_VERSION_TYPE_LABELS[rv.type]}</TableCell>
+                <TableCell>{rv.roleFamily}</TableCell>
                 <TableCell className="text-muted-foreground">
                   {rv.content && rv.content.trim().length > 0
                     ? `${rv.content.trim().split(/\s+/).length} words`

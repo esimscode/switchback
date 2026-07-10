@@ -1,12 +1,7 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
 
-import {
-  FIT_TO_PRISMA,
-  RESUME_TYPE_TO_PRISMA,
-  fitClassifications,
-  resumeVersionTypes,
-} from "../lib/analysis-schema";
+import { FIT_TO_PRISMA, fitClassifications } from "../lib/analysis-schema";
 import { getUser, prisma } from "../lib/db";
 
 export default defineTool({
@@ -20,7 +15,12 @@ export default defineTool({
       .string()
       .optional()
       .describe("Id returned by create_job_analysis, when converting an analysis."),
-    resumeVersion: z.enum(resumeVersionTypes).optional(),
+    resumeVersion: z
+      .string()
+      .optional()
+      .describe(
+        "Role family of the resume version used (must match one of the user's versions — see list_resume_versions).",
+      ),
     fitClassification: z.enum(fitClassifications).optional(),
     status: z
       .enum(["saved", "applied"])
@@ -37,12 +37,10 @@ export default defineTool({
   async execute(input) {
     const user = await getUser();
     const resumeVersion = input.resumeVersion
-      ? await prisma.resumeVersion.findUnique({
+      ? await prisma.resumeVersion.findFirst({
           where: {
-            userId_type: {
-              userId: user.id,
-              type: RESUME_TYPE_TO_PRISMA[input.resumeVersion],
-            },
+            userId: user.id,
+            roleFamily: { equals: input.resumeVersion, mode: "insensitive" },
           },
         })
       : null;

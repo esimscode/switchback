@@ -22,7 +22,7 @@ import {
 import { prisma } from "@/lib/db";
 import {
   CONTENT_STATUS_LABELS,
-  RESUME_VERSION_TYPE_LABELS,
+
   asStringArray,
 } from "@/lib/labels";
 import { getUser } from "@/lib/user";
@@ -36,7 +36,7 @@ export default async function CareerProfilePage() {
     prisma.careerProfile.findUnique({ where: { userId: user.id } }),
     prisma.resumeVersion.findMany({
       where: { userId: user.id },
-      orderBy: { type: "asc" },
+      orderBy: { createdAt: "asc" },
     }),
   ]);
 
@@ -154,7 +154,7 @@ export default async function CareerProfilePage() {
                         {rv.name}
                       </Link>
                     </TableCell>
-                    <TableCell>{RESUME_VERSION_TYPE_LABELS[rv.type]}</TableCell>
+                    <TableCell>{rv.roleFamily}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {rv.content && rv.content.trim().length > 0
                         ? `${rv.content.trim().split(/\s+/).length} words`

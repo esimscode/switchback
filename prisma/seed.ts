@@ -3,11 +3,7 @@
 import "dotenv/config";
 import { PrismaNeon } from "@prisma/adapter-neon";
 
-import {
-  MemoryCategory,
-  ProjectStatus,
-  ResumeVersionType,
-} from "../src/generated/prisma/enums";
+import { MemoryCategory, ProjectStatus } from "../src/generated/prisma/enums";
 import { PrismaClient } from "../src/generated/prisma/client";
 
 const prisma = new PrismaClient({
@@ -68,12 +64,12 @@ const CREDIBILITY_RULES = [
   "Do not frame Eric as starting over. Frame him as specializing, compounding, and moving up the value chain.",
 ];
 
-const RESUME_VERSIONS: { name: string; type: ResumeVersionType }[] = [
-  { name: "Master Resume", type: "MASTER" },
-  { name: "Platform-DevSecOps Resume", type: "PLATFORM_DEVSECOPS" },
-  { name: "Cloud-Infrastructure Resume", type: "CLOUD_INFRASTRUCTURE" },
-  { name: "Software-AI Automation Resume", type: "SOFTWARE_AI" },
-  { name: "Cybersecurity Resume", type: "CYBERSECURITY" },
+const RESUME_VERSIONS: { name: string; roleFamily: string }[] = [
+  { name: "Master Resume", roleFamily: "Master" },
+  { name: "Platform-DevSecOps Resume", roleFamily: "Platform / DevSecOps" },
+  { name: "Cloud-Infrastructure Resume", roleFamily: "Cloud / Infrastructure" },
+  { name: "Software-AI Automation Resume", roleFamily: "Software / AI Automation" },
+  { name: "Cybersecurity Resume", roleFamily: "Cybersecurity" },
 ];
 
 const PROJECTS: {
@@ -216,9 +212,11 @@ async function main() {
 
   for (const rv of RESUME_VERSIONS) {
     await prisma.resumeVersion.upsert({
-      where: { userId_type: { userId: user.id, type: rv.type } },
+      where: {
+        userId_roleFamily: { userId: user.id, roleFamily: rv.roleFamily },
+      },
       update: { name: rv.name },
-      create: { userId: user.id, name: rv.name, type: rv.type },
+      create: { userId: user.id, name: rv.name, roleFamily: rv.roleFamily },
     });
   }
 

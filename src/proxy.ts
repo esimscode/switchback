@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/server";
 
 // Gate the whole app behind a Neon Auth session. Excluded from the matcher:
+// - /              the public landing page (`.+` requires a non-empty path,
+//                  so the waitlist form's server action stays reachable)
 // - /auth/*        sign-in and sign-up pages
 // - /api/auth/*    the Neon Auth proxy handler
 // - /eve/*, /_eve_internal/*  the eve agent routes — the channel enforces its
@@ -33,5 +35,5 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!auth|api/auth|eve|_eve_internal|_next|.*\\..*).*)"],
+  matcher: ["/((?!auth|api/auth|eve|_eve_internal|_next|.*\\..*).+)"],
 };

@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 
 import {
   FIT_TO_PRISMA,
-  RESUME_TYPE_TO_PRISMA,
   jobAnalysisSchema,
   type JobAnalysisResult,
 } from "../../../../agent/lib/analysis-schema";
@@ -74,12 +73,10 @@ export async function analyzeJob(
     return { error: "Analysis failed. Check that the agent runtime is running and try again." };
   }
 
-  const resumeVersion = await prisma.resumeVersion.findUnique({
+  const resumeVersion = await prisma.resumeVersion.findFirst({
     where: {
-      userId_type: {
-        userId: user.id,
-        type: RESUME_TYPE_TO_PRISMA[analysis.recommendedResumeVersion],
-      },
+      userId: user.id,
+      roleFamily: { equals: analysis.recommendedResumeVersion, mode: "insensitive" },
     },
   });
 

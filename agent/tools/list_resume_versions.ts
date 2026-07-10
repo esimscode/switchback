@@ -16,11 +16,11 @@ export default defineTool({
     const user = await getUser();
     const versions = await prisma.resumeVersion.findMany({
       where: { userId: user.id },
-      orderBy: { type: "asc" },
+      orderBy: { createdAt: "asc" },
       select: {
         id: true,
         name: true,
-        type: true,
+        roleFamily: true,
         status: true,
         ...(includeContent ? { content: true } : {}),
       },
