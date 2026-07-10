@@ -16,7 +16,8 @@ Switchback turns scattered career activity — positioning, resume versions, job
 
 | Module | What happens |
 |---|---|
-| **Strategist Chat** | An Eve-powered agent with 16 typed tools and 10 skills. Reads your profile and memories at conversation start; writes reflections, decisions, analyses, projects, resume content, and applications with your confirmation. |
+| **Strategist Chat** | An Eve-powered agent with 19 typed tools and 11 skills. Reads your profile and memories at conversation start; writes reflections, decisions, analyses, projects, resume content, and applications with your confirmation. |
+| **Job Sourcing** | A scheduled run (Mon/Wed/Fri) pulls fresh postings from Adzuna searches and watched company job boards (Greenhouse/Lever/Ashby), dedupes them, and triages each against your profile — most get dismissed, honestly. Survivors land on the dashboard and in the leads inbox; one click runs a full analysis in the background and the notification bell tells you when it's ready. Stale leads are swept automatically. |
 | **Job Analysis** | Paste a posting (or just its URL — the agent fetches it). Get an honest fit classification, a resume recommendation with reasoning, gaps named candidly, a tailored summary, and interview talking points. One click converts it to a tracked application. |
 | **Application Tracker** | Pipeline statuses, follow-up dates, fit badges, resume version used, decision reasoning. |
 | **Project Asset Pipeline** | Each project generates career proof: case study drafts, LinkedIn posts in your voice, and the smallest useful next milestone — all capped at the project's honest status label. |
@@ -38,10 +39,11 @@ Next.js 16 App Router (TypeScript · Tailwind 4 · shadcn/ui)
 │  pages, server actions, forms          ── withEve() mounts the agent
 │  src/proxy.ts                          ── Neon Auth session gate on every route
 │
-├── Neon Postgres · Prisma 7             ── 12 models: profile, resumes,
-│                                            analyses, applications, projects,
-│                                            case studies, reflections,
-│                                            memories, decisions, outputs
+├── Neon Postgres · Prisma 7             ── 14 models: profile, resumes, job
+│                                            leads, analyses, applications,
+│                                            projects, case studies, reflections,
+│                                            memories, decisions, outputs,
+│                                            notifications
 │
 ├── Neon Auth                            ── app sessions; issues the short-lived
 │                                            JWTs the agent channel verifies
@@ -50,9 +52,12 @@ Next.js 16 App Router (TypeScript · Tailwind 4 · shadcn/ui)
     ├── instructions.md                     persona + credibility hard limits
     ├── channels/eve.ts                     route auth: Neon Auth JWT (browser),
     │                                       Vercel OIDC (server), local dev
-    ├── tools/        (16)                  typed Zod tools calling Prisma
-    ├── skills/       (10)                  load-on-demand procedures
-    └── schedules/                          weekly career review (cron)
+    ├── tools/        (19)                  typed Zod tools calling Prisma
+    ├── skills/       (11)                  load-on-demand procedures
+    ├── lib/job-sources/                    Adzuna + Greenhouse/Lever/Ashby
+    │                                       adapters, dedupe, stale-lead sweep
+    └── schedules/                          weekly review + Mon/Wed/Fri job
+                                            sourcing (Vercel Cron)
 ```
 
 Two paths reach the agent: the chat UI (`useEveAgent` with resumable sessions) and server actions that drive typed Eve sessions with Zod output schemas — the agent does the reasoning, the app persists the result. Full notes in [`docs/architecture.md`](docs/architecture.md).
@@ -85,6 +90,17 @@ npx prisma migrate deploy         # create the schema
 
 Then open the app, create your account, and let the onboarding conversation build your profile — the strategist interviews you and seeds the workspace itself. (`npx prisma db seed` exists for demo data; skip it so onboarding runs.) Optionally add your production domain as a **trusted origin** in the Neon Auth configuration and disable open sign-up once your account exists.
 
+### Optional: Adzuna job sourcing
+
+The proactive sourcing schedule works out of the box for **watched company job boards** (Greenhouse/Lever/Ashby public APIs — no account needed; edit the list in `agent/skills/source-jobs.md`). To add broad keyword search across job boards, create a free [Adzuna developer account](https://developer.adzuna.com) and set two more environment variables (locally and in Vercel):
+
+| Variable | Where it comes from |
+|---|---|
+| `ADZUNA_APP_ID` | Adzuna developer dashboard → your application. |
+| `ADZUNA_APP_KEY` | Same place. The free tier comfortably covers three runs a week. |
+
+Without these, Adzuna queries are skipped gracefully — sourcing, triage, and analysis still run on the company boards, and you can always paste any posting into Job Analysis by hand.
+
 ## Running locally
 
 ```bash
@@ -105,6 +121,9 @@ Next.js 16 · TypeScript · Tailwind CSS 4 · shadcn/ui · Neon Postgres + Neon 
 - Pluggable model providers, so users pick what's most affordable
 - Multi-tenant data model with per-account onboarding (today: one workspace per deployment)
 - Resume authoring upgrades (richer editor, tailoring flows writing straight to versions)
+- CI with automated tests and preview deploys, replacing push-to-main
+- Security hardening (and a WAF) ahead of any hosted/cloud offering
+- Outcome calibration: feed application results back into how triage and fit classification are judged
 
 ## Philosophy
 
