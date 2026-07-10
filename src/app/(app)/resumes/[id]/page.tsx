@@ -12,6 +12,7 @@ import { CONTENT_STATUS_LABELS } from "@/lib/labels";
 import { getUser } from "@/lib/user";
 
 import { updateResumeVersion } from "../actions";
+import { DeleteResumeDialog } from "./delete-resume-dialog";
 import { ResumeContentEditor } from "./resume-content-editor";
 
 export const metadata = { title: "Resume Version" };
@@ -37,7 +38,13 @@ export default async function ResumeVersionPage({
         title={resume.name}
         description={`${resume.roleFamily} focus`}
         actions={
-          <CopyButton text={resume.content ?? ""} label="Copy content" />
+          <>
+            <CopyButton text={resume.content ?? ""} label="Copy content" />
+            <DeleteResumeDialog
+              resumeVersionId={resume.id}
+              resumeName={resume.name}
+            />
+          </>
         }
       />
       <form action={action} className="max-w-3xl space-y-4 p-6">

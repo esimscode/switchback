@@ -28,6 +28,36 @@ export async function updateResumeVersion(
   redirect("/career-profile");
 }
 
+export async function deleteResumeVersion(
+  resumeVersionId: string,
+  _prevState: { error: string } | null,
+  formData: FormData,
+) {
+  const user = await getUser();
+  const resume = await prisma.resumeVersion.findUnique({
+    where: { id: resumeVersionId, userId: user.id },
+    select: { id: true, name: true },
+  });
+  if (!resume) {
+    return { error: "This resume version no longer exists." };
+  }
+
+  // The dialog gates on this too, but the name check is enforced here so a
+  // stray request can't delete without typing the exact name.
+  const confirmName = String(formData.get("confirmName") ?? "").trim();
+  if (confirmName !== resume.name) {
+    return { error: "The name you typed doesn't match this version." };
+  }
+
+  // Analyses and applications that referenced this version keep their data;
+  // the link is cleared (SetNull) by the schema.
+  await prisma.resumeVersion.delete({ where: { id: resume.id } });
+
+  revalidatePath("/resumes");
+  revalidatePath("/career-profile");
+  redirect("/resumes");
+}
+
 export async function createResumeVersion(formData: FormData) {
   const user = await getUser();
   const roleFamily = String(formData.get("roleFamily") ?? "").trim();

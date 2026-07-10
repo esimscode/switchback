@@ -16,12 +16,13 @@ import {
 } from "lucide-react";
 import { UserButton } from "@neondatabase/auth-ui";
 
-import { SwitchbackLogo } from "@/components/logo";
+import { SwitchbackMark } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
+  SidebarRail,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -66,10 +67,13 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarHeader>
-        <Link href="/dashboard" className="px-2 py-1.5">
-          <SwitchbackLogo />
+        <Link href="/dashboard" className="flex items-center gap-2 px-2 py-1.5">
+          <SwitchbackMark className="size-5 shrink-0" strokeWidth={13} />
+          <span className="text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
+            switchback
+          </span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
@@ -108,12 +112,13 @@ export function AppSidebar() {
             <UserButton
               size="default"
               variant="ghost"
-              className="h-10 min-w-0 flex-1 justify-start px-2"
+              className="h-10 min-w-0 flex-1 justify-start px-2 group-data-[collapsible=icon]:px-0"
             />
-            <ModeToggle />
+            <ModeToggle className="group-data-[collapsible=icon]:hidden" />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   );
 }

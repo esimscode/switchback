@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 
-export function ModeToggle() {
+export function ModeToggle({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();
 
   return (
@@ -13,6 +13,7 @@ export function ModeToggle() {
       variant="ghost"
       size="icon-sm"
       aria-label="Toggle dark mode"
+      className={className}
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >
       <Sun className="scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
