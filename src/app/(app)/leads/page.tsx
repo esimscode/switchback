@@ -4,7 +4,12 @@ import { Radar } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/db";
-import { findExistingAnalysisIds, isAnalysisStale } from "@/lib/leads";
+import {
+  describeSourcingHealth,
+  findExistingAnalysisIds,
+  getSourcingHealth,
+  isAnalysisStale,
+} from "@/lib/leads";
 import { cn } from "@/lib/utils";
 import { getUser } from "@/lib/user";
 import type { JobLeadStatus } from "@/generated/prisma/enums";
@@ -64,13 +69,14 @@ export default async function LeadsPage({
     counts.find((c) => c.status === status)?._count ?? 0;
   const existingAnalyses = await findExistingAnalysisIds(user.id, leads);
   const hasAnalyzing = countFor("ANALYZING") > 0;
+  const sourcingStatus = describeSourcingHealth(await getSourcingHealth(user.id));
 
   return (
     <div className="flex flex-1 flex-col">
       {hasAnalyzing ? <LeadsAutoRefresh /> : null}
       <PageHeader
         title="Job Leads"
-        description="Sourced Mon/Wed/Fri and triaged against your profile — only the honest picks survive."
+        description={`Sourced Mon/Wed/Fri, triaged against your profile — ${sourcingStatus.text}`}
       />
       <div className="space-y-4 p-6">
         <div className="flex flex-wrap gap-2">

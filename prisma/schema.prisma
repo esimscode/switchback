@@ -109,6 +109,7 @@ model User {
   strategicDecisions StrategicDecision[]
   agentOutputs       AgentOutput[]
   notifications      Notification[]
+  sourcingRuns       SourcingRun[]
 
   @@map("users")
 }
@@ -393,6 +394,26 @@ model JobLead {
   @@index([userId, status])
   @@index([userId, lastSeenAt])
   @@map("job_leads")
+}
+
+// One row per source_job_leads execution — the sourcing loop's health signal.
+// The UI shows the latest row as "last run"; a stale latest row means runs are
+// failing before the tool even executes (crashed session, missing cron), which
+// no success-path logging could ever report.
+model SourcingRun {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  fetched   Int
+  created   Int
+  refreshed Int
+  swept     Int
+  errors    Json     @default("[]")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("sourcing_runs")
 }
 
 // In-app notifications: background work surfacing to the user (new triaged

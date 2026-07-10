@@ -15,6 +15,60 @@ export function isAnalysisStale(lead: { status: JobLeadStatus; updatedAt: Date }
   );
 }
 
+// Sourcing runs Mon/Wed/Fri, so the longest healthy gap is Fri → Mon (3 days).
+// Past this, the loop is presumed broken and the UI says so.
+const SOURCING_OVERDUE_MS = 3.5 * 24 * 60 * 60 * 1000;
+
+export type SourcingHealth = {
+  lastRunAt: Date;
+  fetched: number;
+  created: number;
+  errorCount: number;
+  overdue: boolean;
+} | null;
+
+export async function getSourcingHealth(userId: string): Promise<SourcingHealth> {
+  const run = await prisma.sourcingRun.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    select: { createdAt: true, fetched: true, created: true, errors: true },
+  });
+  if (!run) return null;
+  return {
+    lastRunAt: run.createdAt,
+    fetched: run.fetched,
+    created: run.created,
+    errorCount: Array.isArray(run.errors) ? run.errors.length : 0,
+    overdue: Date.now() - run.createdAt.getTime() > SOURCING_OVERDUE_MS,
+  };
+}
+
+const runFormat = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+export function describeSourcingHealth(health: SourcingHealth): {
+  text: string;
+  warning: boolean;
+} {
+  if (!health) {
+    return { text: "no runs yet — first run Mon/Wed/Fri ~8 AM", warning: false };
+  }
+  if (health.overdue) {
+    return {
+      text: `no successful run since ${runFormat.format(health.lastRunAt)} — check the cron`,
+      warning: true,
+    };
+  }
+  const base = `last run ${runFormat.format(health.lastRunAt)} · ${health.fetched} fetched · ${health.created} new`;
+  return health.errorCount > 0
+    ? { text: `${base} · ${health.errorCount} source error${health.errorCount === 1 ? "" : "s"}`, warning: true }
+    : { text: base, warning: false };
+}
+
 // Maps lead id → existing JobAnalysis id for leads whose company + role were
 // already analyzed (via promotion or a manual /jobs/new run), so the UI can
 // guard against accidental duplicate analyses.

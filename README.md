@@ -122,6 +122,7 @@ Next.js 16 · TypeScript · Tailwind CSS 4 · shadcn/ui · Neon Postgres + Neon 
 - Multi-tenant data model with per-account onboarding (today: one workspace per deployment)
 - Resume authoring upgrades (richer editor, tailoring flows writing straight to versions)
 - CI with automated tests and preview deploys, replacing push-to-main
+- Email alerts (Resend) when scheduled runs fail, beyond the in-app health line
 - Security hardening (and a WAF) ahead of any hosted/cloud offering
 - Outcome calibration: feed application results back into how triage and fit classification are judged
 

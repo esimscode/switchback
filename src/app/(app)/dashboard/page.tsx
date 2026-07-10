@@ -28,7 +28,12 @@ import {
   REFLECTION_TYPE_LABELS,
   asStringArray,
 } from "@/lib/labels";
-import { findExistingAnalysisIds, isAnalysisStale } from "@/lib/leads";
+import {
+  describeSourcingHealth,
+  findExistingAnalysisIds,
+  getSourcingHealth,
+  isAnalysisStale,
+} from "@/lib/leads";
 import { getUser } from "@/lib/user";
 
 import { LeadsAutoRefresh } from "../leads/lead-actions";
@@ -156,6 +161,7 @@ export default async function DashboardPage() {
   });
   const existingAnalyses = await findExistingAnalysisIds(user.id, jobLeads);
   const hasAnalyzing = jobLeads.some((lead) => lead.status === "ANALYZING");
+  const sourcingStatus = describeSourcingHealth(await getSourcingHealth(user.id));
 
   return (
     <div className="flex flex-1 flex-col">
@@ -242,8 +248,10 @@ export default async function DashboardPage() {
                   View all →
                 </Link>{" "}
                 · triaged by the strategist
-                {newLeadCount > 0 ? ` · ${newLeadCount} awaiting triage` : ""} · runs
-                Mon/Wed/Fri
+                {newLeadCount > 0 ? ` · ${newLeadCount} awaiting triage` : ""} ·{" "}
+                <span className={sourcingStatus.warning ? "text-destructive" : undefined}>
+                  {sourcingStatus.text}
+                </span>
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

@@ -102,6 +102,29 @@ export default defineTool({
     const { created, refreshed, createdIds } = await upsertLeads(user.id, leads);
     const swept = input.sweepStale === false ? 0 : await sweepStaleLeads(user.id);
 
+    // Health signal: the UI reads the latest run as "last sourced"; a stale
+    // one means runs are dying before this tool executes.
+    await prisma.sourcingRun.create({
+      data: {
+        userId: user.id,
+        fetched: leads.length,
+        created,
+        refreshed,
+        swept,
+        errors,
+      },
+    });
+    if (errors.length > 0) {
+      await prisma.notification.create({
+        data: {
+          userId: user.id,
+          type: "sourcing_issues",
+          title: `Job sourcing hit ${errors.length} source error${errors.length === 1 ? "" : "s"}`,
+          href: "/leads",
+        },
+      });
+    }
+
     const createdRows = createdIds.length
       ? await prisma.jobLead.findMany({
           where: { id: { in: createdIds.slice(0, NEW_LEADS_SHOWN) } },
