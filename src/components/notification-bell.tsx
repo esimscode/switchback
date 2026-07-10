@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bell } from "lucide-react";
 
 import {
+  clearNotifications,
   fetchNotifications,
   markNotificationsRead,
   type NotificationItem,
@@ -81,7 +82,23 @@ export function NotificationBell() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+        <DropdownMenuLabel className="flex items-center justify-between">
+          Notifications
+          {items.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs font-normal text-muted-foreground"
+              onClick={() => {
+                setItems([]);
+                setUnread(0);
+                void clearNotifications();
+              }}
+            >
+              Clear all
+            </Button>
+          ) : null}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         {items.length === 0 ? (
           <p className="px-2 py-3 text-sm text-muted-foreground">

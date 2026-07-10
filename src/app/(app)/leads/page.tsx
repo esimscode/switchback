@@ -82,16 +82,21 @@ export default async function LeadsPage({
                 key={tab.status}
                 href={tab.status === "REVIEWED" ? "/leads" : `/leads?status=${tab.status}`}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
+                  "group inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors",
                   isActive
                     ? "border-transparent bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-block-lime hover:text-black hover:border-transparent",
+                    : "text-muted-foreground hover:border-transparent hover:bg-block-lime hover:text-black",
                 )}
               >
                 {tab.label}
+                {/* On the lime hover ground the count must go black too — the
+                    outline badge's own text color would stay white in dark mode. */}
                 <Badge
                   variant={isActive ? "secondary" : "outline"}
-                  className="px-1.5 py-0 text-xs"
+                  className={cn(
+                    "px-1.5 py-0 text-xs",
+                    !isActive && "group-hover:border-black/30 group-hover:text-black",
+                  )}
                 >
                   {count}
                 </Badge>
@@ -106,7 +111,7 @@ export default async function LeadsPage({
           </p>
         ) : (
           <>
-            <ul className="max-w-4xl space-y-5">
+            <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {leads.map((lead) => (
                 <LeadRow
                   key={lead.id}
@@ -114,6 +119,7 @@ export default async function LeadsPage({
                   existingAnalysisId={existingAnalyses.get(lead.id)}
                   stale={isAnalysisStale(lead)}
                   showMeta
+                  variant="card"
                 />
               ))}
             </ul>

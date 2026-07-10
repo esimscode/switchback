@@ -3,6 +3,7 @@ import { Compass, Plus } from "lucide-react";
 
 import { FitBadge } from "@/components/fit-badge";
 import { PageHeader } from "@/components/page-header";
+import { clampPage, Pager } from "@/components/pager";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,19 +22,31 @@ const dateFormat = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
-export default async function JobsPage() {
+const PAGE_SIZE = 24;
+
+export default async function JobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const user = await getUser();
+  const params = await searchParams;
+  const total = await prisma.jobAnalysis.count({ where: { userId: user.id } });
+  const pageCount = Math.max(Math.ceil(total / PAGE_SIZE), 1);
+  const page = clampPage(params.page, pageCount);
   const analyses = await prisma.jobAnalysis.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
     include: { recommendedResumeVersion: { select: { name: true } } },
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
   });
 
   return (
     <div className="flex flex-1 flex-col">
       <PageHeader
         title="Job Analysis"
-        description="Paste a job description, get an honest fit strategy."
+        description={`Paste a job description, get an honest fit strategy.${total > 0 ? ` · ${total} ${total === 1 ? "analysis" : "analyses"}` : ""}`}
         actions={
           <Button asChild size="sm">
             <Link href="/jobs/new">
@@ -56,6 +69,7 @@ export default async function JobsPage() {
             </Button>
           </div>
         ) : (
+          <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {analyses.map((analysis) => (
               <Link key={analysis.id} href={`/jobs/${analysis.id}`}>
@@ -83,6 +97,12 @@ export default async function JobsPage() {
               </Link>
             ))}
           </div>
+          <Pager
+            page={page}
+            pageCount={pageCount}
+            hrefFor={(p) => (p === 1 ? "/jobs" : `/jobs?page=${p}`)}
+          />
+          </>
         )}
       </div>
     </div>

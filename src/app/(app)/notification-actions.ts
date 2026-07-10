@@ -43,3 +43,8 @@ export async function markNotificationsRead() {
     data: { readAt: new Date() },
   });
 }
+
+export async function clearNotifications() {
+  const user = await getUser();
+  await prisma.notification.deleteMany({ where: { userId: user.id } });
+}
