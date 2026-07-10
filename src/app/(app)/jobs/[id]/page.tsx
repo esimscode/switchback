@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, ExternalLink } from "lucide-react";
 
+import { CopyButton } from "@/components/copy-button";
 import { FitBadge } from "@/components/fit-badge";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ import { asStringArray } from "@/lib/labels";
 import { getUser } from "@/lib/user";
 
 import { createApplicationFromAnalysis } from "../actions";
+import { DraftCoverLetterButton } from "./draft-cover-letter-button";
 
 export const metadata = { title: "Job Analysis" };
 export const dynamic = "force-dynamic";
@@ -37,6 +39,19 @@ export default async function JobAnalysisPage({
     },
   });
   if (!analysis) notFound();
+
+  const coverLetter = await prisma.agentOutput.findFirst({
+    where: {
+      userId: user.id,
+      relatedJobAnalysisId: analysis.id,
+      outputType: "cover_letter",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  // Content stores letter + approach note; only the letter should be copied.
+  const [letterBody, approachNote] = coverLetter
+    ? coverLetter.content.split(/\n\n---\nApproach: /, 2)
+    : [null, null];
 
   const hasApplication = analysis.applications.length > 0;
   const convertAction = createApplicationFromAnalysis.bind(null, analysis.id);
@@ -151,6 +166,52 @@ export default async function JobAnalysisPage({
               ))}
             </ul>
           </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <CardTitle className="text-base">Cover letter</CardTitle>
+                <CardDescription>
+                  Grounded in the analysis and your resume — copy it out and
+                  make it yours.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                {letterBody ? (
+                  <CopyButton text={letterBody} label="Copy letter" />
+                ) : null}
+                <DraftCoverLetterButton
+                  jobAnalysisId={analysis.id}
+                  label={coverLetter ? "Redraft" : "Draft cover letter"}
+                />
+              </div>
+            </div>
+          </CardHeader>
+          {coverLetter ? (
+            <CardContent className="space-y-3 text-sm">
+              <p className="max-w-prose whitespace-pre-line">{letterBody}</p>
+              {approachNote ? (
+                <p className="max-w-prose text-xs text-muted-foreground">
+                  <span className="eyebrow">Approach</span> — {approachNote}
+                </p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Drafted{" "}
+                {new Intl.DateTimeFormat("en-US", {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(coverLetter.createdAt)}
+              </p>
+            </CardContent>
+          ) : (
+            <CardContent className="text-sm text-muted-foreground">
+              No draft yet. The strategist writes it from this analysis, your
+              profile, and the recommended resume version&apos;s real content —
+              honest gaps stay honest.
+            </CardContent>
+          )}
         </Card>
 
         <Card className="lg:col-span-2">

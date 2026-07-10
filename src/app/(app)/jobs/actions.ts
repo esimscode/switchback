@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import {
   FIT_TO_PRISMA,
@@ -10,6 +11,7 @@ import {
 } from "../../../../agent/lib/analysis-schema";
 import { prisma } from "@/lib/db";
 import { createEveClient } from "@/lib/eve-client";
+import { asStringArray } from "@/lib/labels";
 import { getUser } from "@/lib/user";
 
 function optional(value: FormDataEntryValue | null): string | null {
@@ -135,4 +137,80 @@ export async function createApplicationFromAnalysis(analysisId: string) {
 
   revalidatePath("/applications");
   redirect(`/applications?created=${application.id}`);
+}
+
+export type GenerateState = { error?: string; done?: string };
+
+const coverLetterSchema = z.object({
+  letter: z
+    .string()
+    .describe("The cover letter body, under 300 words, no address block."),
+  approachNote: z
+    .string()
+    .describe(
+      "One or two sentences: the framing chosen and anything deliberately left out (e.g. gaps omitted rather than overclaimed).",
+    ),
+});
+
+export async function draftCoverLetter(
+  jobAnalysisId: string,
+  _prev: GenerateState,
+): Promise<GenerateState> {
+  const user = await getUser();
+  const analysis = await prisma.jobAnalysis.findUnique({
+    where: { id: jobAnalysisId, userId: user.id },
+    include: { recommendedResumeVersion: { select: { name: true } } },
+  });
+  if (!analysis) return { error: "Analysis not found." };
+
+  try {
+    const client = createEveClient();
+    const response = await client
+      .session()
+      .send<z.infer<typeof coverLetterSchema>>({
+        message: [
+          "Draft a cover letter for this job. Load the write-cover-letter skill",
+          "and follow it exactly — profile, memories, and the recommended resume",
+          "version's real content are the only sources of claims. Return",
+          "structured output only.",
+          "",
+          `Company: ${analysis.company}`,
+          `Role: ${analysis.roleTitle}`,
+          analysis.location ? `Location: ${analysis.location}` : "",
+          `Fit classification: ${analysis.fitClassification ?? "unclassified"}`,
+          analysis.recommendedResumeVersion
+            ? `Recommended resume version: ${analysis.recommendedResumeVersion.name}`
+            : "",
+          `Skills to emphasize: ${asStringArray(analysis.skillsToEmphasize).join(", ")}`,
+          `Gaps (never overclaim these): ${asStringArray(analysis.gaps).join("; ")}`,
+          analysis.tailoredSummary
+            ? `Tailored summary: ${analysis.tailoredSummary}`
+            : "",
+          "",
+          "Job description:",
+          analysis.jobDescription,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        outputSchema: coverLetterSchema,
+      });
+    const result = await response.result();
+    if (!result.data) return { error: "No letter came back. Try again." };
+
+    await prisma.agentOutput.create({
+      data: {
+        userId: user.id,
+        outputType: "cover_letter",
+        title: `Cover letter: ${analysis.roleTitle} · ${analysis.company}`,
+        content: `${result.data.letter}\n\n---\nApproach: ${result.data.approachNote}`,
+        relatedJobAnalysisId: analysis.id,
+      },
+    });
+  } catch (error) {
+    console.error("Cover letter draft failed:", error);
+    return { error: "Cover letter generation failed. Is the agent runtime up?" };
+  }
+
+  revalidatePath(`/jobs/${jobAnalysisId}`);
+  return { done: "Cover letter drafted." };
 }
