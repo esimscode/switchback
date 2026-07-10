@@ -35,6 +35,8 @@ export default async function ResumeVersionPage({
   return (
     <div className="flex flex-1 flex-col">
       <PageHeader
+        backHref="/resumes"
+        backLabel="Back to resumes"
         title={resume.name}
         description={`${resume.roleFamily} focus`}
         actions={

@@ -64,6 +64,8 @@ export default async function EditCareerProfilePage() {
   return (
     <div className="flex flex-1 flex-col">
       <PageHeader
+        backHref="/career-profile"
+        backLabel="Back to career profile"
         title="Edit Career Profile"
         description="Positioning, roles, skills, and credibility rules."
       />

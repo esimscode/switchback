@@ -59,6 +59,8 @@ export default async function JobAnalysisPage({
   return (
     <div className="flex flex-1 flex-col">
       <PageHeader
+        backHref="/jobs"
+        backLabel="Back to job analyses"
         title={`${analysis.roleTitle} · ${analysis.company}`}
         description={[
           analysis.location,

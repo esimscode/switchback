@@ -13,7 +13,13 @@ export default defineTool({
     "Create the workspace's initial user and career profile during onboarding. Only call after the user confirmed the profile summary. Fails if a profile already exists — this is a single-user workspace.",
   inputSchema: z.object({
     name: z.string().min(1),
-    email: z.string().email(),
+    email: z
+      .string()
+      .email()
+      .optional()
+      .describe(
+        "Only needed when the caller isn't signed in (local dev) — normally the workspace files under the authenticated account's email automatically.",
+      ),
     location: z.string().optional(),
     primaryHeadline: z.string().min(1).describe("Short professional headline in their words."),
     corePositioning: z.string().min(1).describe("2-3 sentences of who they are professionally. Only confirmed facts."),
@@ -44,12 +50,29 @@ export default defineTool({
       .default([])
       .describe("Durable constraints/preferences surfaced during onboarding."),
   }),
-  async execute(input) {
+  async execute(input, ctx) {
     const existing = await prisma.user.count();
     if (existing > 0) {
       return {
         error:
           "A profile already exists — this is a single-user workspace. Edit it at /career-profile instead.",
+      };
+    }
+
+    // The signed-in account is the source of truth for identity: the eve
+    // channel (agent/channels/eve.ts) verifies the Neon Auth JWT and passes
+    // its email/name claims through. Interview answers only fill gaps
+    // (e.g. local dev, where localDev() authenticates without claims).
+    const authAttributes = ctx.session.auth.current?.attributes ?? {};
+    const authEmail =
+      typeof authAttributes.email === "string" ? authAttributes.email : null;
+    const authName =
+      typeof authAttributes.name === "string" ? authAttributes.name : null;
+    const email = authEmail ?? input.email;
+    if (!email) {
+      return {
+        error:
+          "No email available — the caller isn't signed in and none was provided. Ask the user for the email to file the workspace under.",
       };
     }
 
@@ -67,8 +90,8 @@ export default defineTool({
 
     const user = await prisma.user.create({
       data: {
-        name: input.name,
-        email: input.email,
+        name: input.name || authName || "New user",
+        email,
         location: input.location ?? null,
         careerProfile: {
           create: {

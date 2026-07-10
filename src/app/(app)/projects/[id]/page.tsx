@@ -54,6 +54,8 @@ export default async function ProjectPage({
   return (
     <div className="flex flex-1 flex-col">
       <PageHeader
+        backHref="/projects"
+        backLabel="Back to projects"
         title={project.name}
         description={project.summary ?? undefined}
         actions={

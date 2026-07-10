@@ -59,6 +59,8 @@ export default async function EditProjectPage({
   return (
     <div className="flex flex-1 flex-col">
       <PageHeader
+        backHref={`/projects/${project.id}`}
+        backLabel="Back to project"
         title={`Edit: ${project.name}`}
         description="Honest status labels keep the strategist's outputs credible."
       />
