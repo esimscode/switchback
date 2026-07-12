@@ -15,16 +15,29 @@ export function isAnalysisStale(lead: { status: JobLeadStatus; updatedAt: Date }
   );
 }
 
-// Sourcing runs Mon/Wed/Fri, so the longest healthy gap is Fri → Mon (3 days).
-// Past this, the loop is presumed broken and the UI says so.
-const SOURCING_OVERDUE_MS = 3.5 * 24 * 60 * 60 * 1000;
+// Mirrors the cron in agent/schedules/job-sourcing.md ("0 13 * * 1,3,5").
+// Vercel Hobby crons drift up to an hour and a run takes a few minutes, so a
+// tick only counts as missed once the grace window is past with no run since.
+const SOURCING_DAYS_UTC = [1, 3, 5];
+const SOURCING_HOUR_UTC = 13;
+const SOURCING_GRACE_MS = 2 * 60 * 60 * 1000;
+
+export function previousSourcingTick(now: Date = new Date()): Date {
+  const tick = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), SOURCING_HOUR_UTC),
+  );
+  while (tick > now || !SOURCING_DAYS_UTC.includes(tick.getUTCDay())) {
+    tick.setUTCDate(tick.getUTCDate() - 1);
+  }
+  return tick;
+}
 
 export type SourcingHealth = {
   lastRunAt: Date;
   fetched: number;
   created: number;
   errorCount: number;
-  overdue: boolean;
+  missedTick: Date | null;
 } | null;
 
 export async function getSourcingHealth(userId: string): Promise<SourcingHealth> {
@@ -34,12 +47,14 @@ export async function getSourcingHealth(userId: string): Promise<SourcingHealth>
     select: { createdAt: true, fetched: true, created: true, errors: true },
   });
   if (!run) return null;
+  const tick = previousSourcingTick();
+  const missed = run.createdAt < tick && Date.now() - tick.getTime() > SOURCING_GRACE_MS;
   return {
     lastRunAt: run.createdAt,
     fetched: run.fetched,
     created: run.created,
     errorCount: Array.isArray(run.errors) ? run.errors.length : 0,
-    overdue: Date.now() - run.createdAt.getTime() > SOURCING_OVERDUE_MS,
+    missedTick: missed ? tick : null,
   };
 }
 
@@ -48,6 +63,12 @@ const runFormat = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   hour: "numeric",
   minute: "2-digit",
+  timeZone: "America/Chicago",
+});
+
+const tickDayFormat = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  timeZone: "America/Chicago",
 });
 
 export function describeSourcingHealth(health: SourcingHealth): {
@@ -57,9 +78,9 @@ export function describeSourcingHealth(health: SourcingHealth): {
   if (!health) {
     return { text: "no runs yet — first run Mon/Wed/Fri ~8 AM", warning: false };
   }
-  if (health.overdue) {
+  if (health.missedTick) {
     return {
-      text: `no successful run since ${runFormat.format(health.lastRunAt)} — check the cron`,
+      text: `${tickDayFormat.format(health.missedTick)} morning run never fired — last run ${runFormat.format(health.lastRunAt)}`,
       warning: true,
     };
   }
