@@ -45,3 +45,6 @@ next-env.d.ts
 .output/
 .workflow-data/
 !.env.example
+
+# Internal marketing video project — stays local (see local branch codex/video-capture-pipeline)
+/video/

@@ -11,19 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { auth } from "@/lib/auth/server";
 import { prisma } from "@/lib/db";
-import { CONTENT_STATUS_LABELS, asStringArray } from "@/lib/labels";
+import { asStringArray } from "@/lib/labels";
 import { getUser } from "@/lib/user";
+
+import { ResumeVersionsList } from "../resumes/resume-versions-list";
 
 export const metadata = { title: "Career Profile" };
 export const dynamic = "force-dynamic";
@@ -177,41 +171,7 @@ export default async function CareerProfilePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Focus</TableHead>
-                  <TableHead>Content</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {resumeVersions.map((rv) => (
-                  <TableRow key={rv.id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        href={`/resumes/${rv.id}`}
-                        className="underline-offset-4 hover:underline"
-                      >
-                        {rv.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{rv.roleFamily}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {rv.content && rv.content.trim().length > 0
-                        ? `${rv.content.trim().split(/\s+/).length} words`
-                        : "Empty — add it"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {CONTENT_STATUS_LABELS[rv.status]}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <ResumeVersionsList resumeVersions={resumeVersions} />
           </CardContent>
         </Card>
       </div>

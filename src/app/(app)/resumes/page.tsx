@@ -1,20 +1,9 @@
-import Link from "next/link";
-
 import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { prisma } from "@/lib/db";
-import { CONTENT_STATUS_LABELS } from "@/lib/labels";
 import { getUser } from "@/lib/user";
 
 import { NewResumeDialog } from "./new-resume-dialog";
+import { ResumeVersionsList } from "./resume-versions-list";
 
 export const metadata = { title: "Resumes" };
 export const dynamic = "force-dynamic";
@@ -34,41 +23,7 @@ export default async function ResumesPage() {
         actions={<NewResumeDialog />}
       />
       <div className="p-6">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Focus</TableHead>
-              <TableHead>Content</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {resumeVersions.map((rv) => (
-              <TableRow key={rv.id}>
-                <TableCell className="font-medium">
-                  <Link
-                    href={`/resumes/${rv.id}`}
-                    className="underline-offset-4 hover:underline"
-                  >
-                    {rv.name}
-                  </Link>
-                </TableCell>
-                <TableCell>{rv.roleFamily}</TableCell>
-                <TableCell className="text-muted-foreground">
-                  {rv.content && rv.content.trim().length > 0
-                    ? `${rv.content.trim().split(/\s+/).length} words`
-                    : "Empty — add it"}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {CONTENT_STATUS_LABELS[rv.status]}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <ResumeVersionsList resumeVersions={resumeVersions} />
       </div>
     </div>
   );

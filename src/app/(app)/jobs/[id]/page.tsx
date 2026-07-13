@@ -97,7 +97,7 @@ export default async function JobAnalysisPage({
       <div className="grid gap-4 p-6 lg:grid-cols-2">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {analysis.fitClassification ? (
                 <FitBadge fit={analysis.fitClassification} />
               ) : null}

@@ -31,6 +31,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 const navGroups = [
@@ -67,11 +68,18 @@ const navGroups = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  // On mobile the sidebar is a sheet overlay; navigating should dismiss it.
+  const { setOpenMobile } = useSidebar();
+  const closeMobile = () => setOpenMobile(false);
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <Link href="/dashboard" className="flex items-center gap-2 px-2 py-1.5">
+        <Link
+          href="/dashboard"
+          onClick={closeMobile}
+          className="flex items-center gap-2 px-2 py-1.5"
+        >
           <SwitchbackMark className="size-5 shrink-0" strokeWidth={13} />
           <span className="text-sm font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
             switchback
@@ -96,7 +104,7 @@ export function AppSidebar() {
                       }
                       className="data-[active=true]:bg-block-lime data-[active=true]:text-black"
                     >
-                      <Link href={item.href}>
+                      <Link href={item.href} onClick={closeMobile}>
                         <item.icon />
                         <span>{item.title}</span>
                       </Link>

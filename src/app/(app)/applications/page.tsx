@@ -143,6 +143,51 @@ export default async function ApplicationsPage({
           </div>
         ) : (
           <>
+          <ul className="grid gap-3 md:hidden">
+            {applications.map((app) => {
+              const meta = [
+                app.resumeVersion?.name,
+                app.dateApplied && `Applied ${dateFormat.format(app.dateApplied)}`,
+                app.followUpDate && `Follow-up ${dateFormat.format(app.followUpDate)}`,
+              ].filter(Boolean);
+              return (
+                <li
+                  key={app.id}
+                  className="space-y-3 rounded-[1.5rem] bg-card p-5 text-sm ring-1 ring-border"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium">
+                        {app.link ? (
+                          <a
+                            href={app.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline-offset-4 hover:underline"
+                          >
+                            {app.company}
+                          </a>
+                        ) : (
+                          app.company
+                        )}
+                      </p>
+                      <p className="text-muted-foreground">{app.roleTitle}</p>
+                    </div>
+                    {app.fitClassification ? (
+                      <Badge variant="outline" className="shrink-0">
+                        {FIT_CLASSIFICATION_LABELS[app.fitClassification]}
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <StatusSelect applicationId={app.id} status={app.status} />
+                  {meta.length > 0 ? (
+                    <p className="text-xs text-muted-foreground">{meta.join(" · ")}</p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="hidden md:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -200,6 +245,7 @@ export default async function ApplicationsPage({
               ))}
             </TableBody>
           </Table>
+          </div>
           <Pager page={page} pageCount={pageCount} hrefFor={hrefFor} />
           </>
         )}
