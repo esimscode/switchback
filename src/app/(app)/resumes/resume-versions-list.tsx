@@ -21,9 +21,9 @@ type ResumeVersionRow = {
 };
 
 function describeContent(content: string | null) {
-  return content && content.trim().length > 0
-    ? `${content.trim().split(/\s+/).length} words`
-    : "Empty — add it";
+  if (!content || content.trim().length === 0) return "Empty — add it";
+  const words = content.trim().split(/\s+/).length;
+  return `${words} ${words === 1 ? "word" : "words"}`;
 }
 
 // The resumes page and the career profile render the same versions list:
