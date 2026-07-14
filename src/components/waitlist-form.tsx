@@ -12,8 +12,8 @@ export function WaitlistForm() {
   if (state?.success) {
     return (
       <p className="text-sm">
-        You&apos;re on the list — we&apos;ll email you when the hosted plan
-        opens up.
+        You&apos;re on the list. We&apos;ll only reach out for genuine feedback
+        on how the hosted plan should work — no spam.
       </p>
     );
   }
