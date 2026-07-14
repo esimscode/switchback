@@ -34,6 +34,10 @@ export default async function Home() {
   }
 
   const interestedCount = await prisma.waitlistSignup.count();
+  // Demo assets live in Vercel Blob (public), referenced by URL so they never
+  // ship in the repo. Set on cloud deploys; absent → the video block is skipped.
+  const demoVideoUrl = process.env.DEMO_VIDEO_URL;
+  const demoPosterUrl = process.env.DEMO_POSTER_URL;
 
   return (
     <main className="flex min-h-svh flex-col">
@@ -65,21 +69,23 @@ export default async function Home() {
           </p>
         </div>
 
-        <div className="w-full max-w-2xl">
-          {/* preload="none" keeps the 9.7 MB demo off the critical path; the
-              poster carries the first paint until a click. */}
-          <video
-            controls
-            preload="none"
-            playsInline
-            poster="/demo-poster.jpg"
-            className="w-full rounded-2xl border shadow-sm"
-            aria-label="Switchback product demo"
-          >
-            <source src="/demo.mp4" type="video/mp4" />
-            Your browser doesn&apos;t support embedded video.
-          </video>
-        </div>
+        {demoVideoUrl ? (
+          <div className="w-full max-w-2xl">
+            {/* preload="none" keeps the demo off the critical path; the poster
+                carries the first paint until a click. */}
+            <video
+              controls
+              preload="none"
+              playsInline
+              poster={demoPosterUrl}
+              className="w-full rounded-2xl border shadow-sm"
+              aria-label="Switchback product demo"
+            >
+              <source src={demoVideoUrl} type="video/mp4" />
+              Your browser doesn&apos;t support embedded video.
+            </video>
+          </div>
+        ) : null}
 
         <div className="w-full max-w-2xl rounded-2xl bg-block-lime p-8 text-left text-black">
           <p className="eyebrow mb-2">Cloud plan — early interest</p>
