@@ -9,6 +9,8 @@ import { auth } from "@/lib/auth/server";
 // - /api/auth/*    the Neon Auth proxy handler
 // - /eve/*, /_eve_internal/*  the eve agent routes — the channel enforces its
 //   own auth (agent/channels/eve.ts) and must return 401 JSON, not a redirect
+// - /opengraph-image, /twitter-image  the generated share cards (no file
+//   extension, so social crawlers must reach them without an auth redirect)
 // - /_next/*, files with an extension  static assets
 const neonAuthMiddleware = auth.middleware({
   loginUrl: "/auth/sign-in",
@@ -35,5 +37,7 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!auth|api/auth|eve|_eve_internal|_next|.*\\..*).+)"],
+  matcher: [
+    "/((?!auth|api/auth|eve|_eve_internal|_next|opengraph-image|twitter-image|.*\\..*).+)",
+  ],
 };
