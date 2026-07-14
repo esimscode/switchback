@@ -16,13 +16,29 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const OG_DESCRIPTION =
+  "A private AI career operating system for technical professionals. Honest fit calls, gaps named candidly, never an invented bullet point.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://switchback.careers"),
   title: {
     default: "Switchback",
     template: "%s · Switchback",
   },
   description:
     "Switchback — a private AI career operating system for technical professionals. Same mountain, higher ground.",
+  openGraph: {
+    title: "Switchback",
+    description: OG_DESCRIPTION,
+    url: "https://switchback.careers",
+    siteName: "Switchback",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Switchback",
+    description: OG_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({
