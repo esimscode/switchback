@@ -16,6 +16,12 @@ const WAITLIST_GOAL = 100;
 
 // Public landing page. Signed-in users go straight to their workspace;
 // everyone else gets the pitch, the self-host path, and the cloud waitlist.
+//
+// The marketing landing is cloud-only, gated by SWITCHBACK_MARKETING. A
+// self-hosted instance is a private single-user tool — an unauthenticated
+// visitor is the owner, so we send them to sign-in rather than show them the
+// hosted-plan pitch, waitlist, and "deploy from GitHub" call (which they've
+// already done). The Deploy button omits the flag, so self-host defaults off.
 export default async function Home() {
   const { data: session } = await auth.getSession();
   if (session?.user) {
@@ -23,7 +29,15 @@ export default async function Home() {
     redirect(users === 0 ? "/welcome" : "/dashboard");
   }
 
+  if (process.env.SWITCHBACK_MARKETING !== "1") {
+    redirect("/auth/sign-in");
+  }
+
   const interestedCount = await prisma.waitlistSignup.count();
+  // Demo assets live in Vercel Blob (public), referenced by URL so they never
+  // ship in the repo. Set on cloud deploys; absent → the video block is skipped.
+  const demoVideoUrl = process.env.DEMO_VIDEO_URL;
+  const demoPosterUrl = process.env.DEMO_POSTER_URL;
 
   return (
     <main className="flex min-h-svh flex-col">
@@ -54,6 +68,24 @@ export default async function Home() {
             invented bullet point.
           </p>
         </div>
+
+        {demoVideoUrl ? (
+          <div className="w-full max-w-2xl">
+            {/* preload="none" keeps the demo off the critical path; the poster
+                carries the first paint until a click. */}
+            <video
+              controls
+              preload="none"
+              playsInline
+              poster={demoPosterUrl}
+              className="w-full rounded-2xl border shadow-sm"
+              aria-label="Switchback product demo"
+            >
+              <source src={demoVideoUrl} type="video/mp4" />
+              Your browser doesn&apos;t support embedded video.
+            </video>
+          </div>
+        ) : null}
 
         <div className="w-full max-w-2xl rounded-2xl bg-block-lime p-8 text-left text-black">
           <p className="eyebrow mb-2">Cloud plan — early interest</p>
