@@ -5,10 +5,14 @@ import { ArrowRight } from "lucide-react";
 import { SwitchbackMark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { WaitlistForm } from "@/components/waitlist-form";
+import { WaitlistProgress } from "@/components/waitlist-progress";
 import { auth } from "@/lib/auth/server";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
+
+// Interested-signup target that greenlights building the hosted cloud plan.
+const WAITLIST_GOAL = 100;
 
 // Public landing page. Signed-in users go straight to their workspace;
 // everyone else gets the pitch, the self-host path, and the cloud waitlist.
@@ -18,6 +22,8 @@ export default async function Home() {
     const users = await prisma.user.count();
     redirect(users === 0 ? "/welcome" : "/dashboard");
   }
+
+  const interestedCount = await prisma.waitlistSignup.count();
 
   return (
     <main className="flex min-h-svh flex-col">
@@ -55,9 +61,12 @@ export default async function Home() {
             Want Switchback without running your own deployment?
           </h2>
           <p className="mb-5 text-sm">
-            A hosted version is under consideration. Leave your email and
-            you&apos;ll be the first to know — no spam, one announcement.
+            A hosted version is under consideration. Register your interest to
+            help us reach the goal — no spam, ever. We&apos;ll only reach out to
+            interested folks for honest feedback on how a hosted plan should
+            work for you.
           </p>
+          <WaitlistProgress count={interestedCount} goal={WAITLIST_GOAL} />
           <WaitlistForm />
         </div>
 
