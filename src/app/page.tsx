@@ -55,6 +55,22 @@ export default async function Home() {
           </p>
         </div>
 
+        <div className="w-full max-w-2xl">
+          {/* preload="none" keeps the 9.7 MB demo off the critical path; the
+              poster carries the first paint until a click. */}
+          <video
+            controls
+            preload="none"
+            playsInline
+            poster="/demo-poster.jpg"
+            className="w-full rounded-2xl border shadow-sm"
+            aria-label="Switchback product demo"
+          >
+            <source src="/demo.mp4" type="video/mp4" />
+            Your browser doesn&apos;t support embedded video.
+          </video>
+        </div>
+
         <div className="w-full max-w-2xl rounded-2xl bg-block-lime p-8 text-left text-black">
           <p className="eyebrow mb-2">Cloud plan — early interest</p>
           <h2 className="mb-2 text-xl font-semibold tracking-tight">
