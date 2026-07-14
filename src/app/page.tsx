@@ -16,11 +16,21 @@ const WAITLIST_GOAL = 100;
 
 // Public landing page. Signed-in users go straight to their workspace;
 // everyone else gets the pitch, the self-host path, and the cloud waitlist.
+//
+// The marketing landing is cloud-only, gated by SWITCHBACK_MARKETING. A
+// self-hosted instance is a private single-user tool — an unauthenticated
+// visitor is the owner, so we send them to sign-in rather than show them the
+// hosted-plan pitch, waitlist, and "deploy from GitHub" call (which they've
+// already done). The Deploy button omits the flag, so self-host defaults off.
 export default async function Home() {
   const { data: session } = await auth.getSession();
   if (session?.user) {
     const users = await prisma.user.count();
     redirect(users === 0 ? "/welcome" : "/dashboard");
+  }
+
+  if (process.env.SWITCHBACK_MARKETING !== "1") {
+    redirect("/auth/sign-in");
   }
 
   const interestedCount = await prisma.waitlistSignup.count();
