@@ -40,7 +40,7 @@ export function WaitlistProgress({
       <div
         className="h-2 w-full overflow-hidden rounded-full bg-black/15"
         role="progressbar"
-        aria-valuenow={count}
+        aria-valuenow={Math.min(count, goal)}
         aria-valuemin={0}
         aria-valuemax={goal}
         aria-label="Cloud plan interest toward launch goal"
