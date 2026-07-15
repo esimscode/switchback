@@ -14,6 +14,8 @@ export const dynamic = "force-dynamic";
 const when = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
   timeStyle: "short",
+  // Render in the app's timezone; the server would otherwise default to UTC.
+  timeZone: "America/Chicago",
 });
 
 export default async function RemindersPage() {
@@ -83,6 +85,7 @@ export default async function RemindersPage() {
                       <input
                         type="date"
                         name="dueDate"
+                        required
                         aria-label="Snooze until"
                         className="h-8 rounded-md border bg-transparent px-2 text-sm"
                       />

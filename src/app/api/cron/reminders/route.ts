@@ -26,12 +26,17 @@ export async function GET(request: NextRequest) {
   }
 
   const now = new Date();
+  // Filter to due, un-notified rows in the DB so the scan only pulls actionable
+  // ones; the pure helpers below still gate the pipeline (and stay unit-tested).
   const [pendingReminders, activeApplications] = await Promise.all([
-    prisma.reminder.findMany({ where: { status: "PENDING" } }),
+    prisma.reminder.findMany({
+      where: { status: "PENDING", dueDate: { lte: now }, notifiedAt: null },
+    }),
     prisma.application.findMany({
       where: {
         status: { in: [...ACTIVE_APPLICATION_STATUSES] },
-        followUpDate: { not: null },
+        followUpDate: { not: null, lte: now },
+        followUpNotifiedAt: null,
       },
     }),
   ]);
@@ -74,10 +79,14 @@ export async function GET(request: NextRequest) {
       select: { id: true, email: true },
     });
     const baseUrl = process.env.APP_URL ?? "https://switchback.careers";
-    for (const u of users) {
-      const { subject, html } = buildReminderDigest(byUser.get(u.id) ?? [], baseUrl);
-      if (await sendEmail({ to: u.email, subject, html })) emailed += 1;
-    }
+    // Concurrent sends (chunk these if the user base ever outgrows Resend's rate limit).
+    const results = await Promise.all(
+      users.map((u) => {
+        const { subject, html } = buildReminderDigest(byUser.get(u.id) ?? [], baseUrl);
+        return sendEmail({ to: u.email, subject, html });
+      }),
+    );
+    emailed = results.filter(Boolean).length;
   }
 
   return NextResponse.json({
