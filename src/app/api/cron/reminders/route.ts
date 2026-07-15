@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db";
+import { buildReminderDigest } from "@/lib/email/reminder-digest";
+import { sendEmail } from "@/lib/email/resend";
 import {
   ACTIVE_APPLICATION_STATUSES,
   dueFollowUps,
@@ -57,10 +59,30 @@ export async function GET(request: NextRequest) {
     surfaced.push(item);
   }
 
-  // Slice 3 (T8): email a per-user digest of `surfaced`.
+  // One digest email per user with newly-surfaced items. sendEmail no-ops when
+  // Resend is unconfigured and never throws, so email can't break the scan.
+  let emailed = 0;
+  if (surfaced.length > 0) {
+    const byUser = new Map<string, DueItem[]>();
+    for (const item of surfaced) {
+      const list = byUser.get(item.userId) ?? [];
+      list.push(item);
+      byUser.set(item.userId, list);
+    }
+    const users = await prisma.user.findMany({
+      where: { id: { in: [...byUser.keys()] } },
+      select: { id: true, email: true },
+    });
+    const baseUrl = process.env.APP_URL ?? "https://switchback.careers";
+    for (const u of users) {
+      const { subject, html } = buildReminderDigest(byUser.get(u.id) ?? [], baseUrl);
+      if (await sendEmail({ to: u.email, subject, html })) emailed += 1;
+    }
+  }
 
   return NextResponse.json({
     surfaced: surfaced.length,
+    emailed,
     scannedAt: now.toISOString(),
   });
 }
