@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth/server";
 //                  so the waitlist form's server action stays reachable)
 // - /auth/*        sign-in and sign-up pages
 // - /api/auth/*    the Neon Auth proxy handler
+// - /api/cron/*    scheduled jobs — guarded by CRON_SECRET, not a session
 // - /eve/*, /_eve_internal/*  the eve agent routes — the channel enforces its
 //   own auth (agent/channels/eve.ts) and must return 401 JSON, not a redirect
 // - /opengraph-image, /twitter-image  the generated share cards (no file
@@ -38,6 +39,6 @@ export default async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!auth|api/auth|eve|_eve_internal|_next|opengraph-image|twitter-image|.*\\..*).+)",
+    "/((?!auth|api/auth|api/cron|eve|_eve_internal|_next|opengraph-image|twitter-image|.*\\..*).+)",
   ],
 };
