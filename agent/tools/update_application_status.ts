@@ -75,7 +75,11 @@ export default defineTool({
       data: {
         status,
         ...(status === "APPLIED" && { dateApplied: new Date() }),
-        ...(input.followUpDate && { followUpDate: new Date(input.followUpDate) }),
+        // Re-arm the follow-up nudge whenever the date changes.
+        ...(input.followUpDate && {
+          followUpDate: new Date(input.followUpDate),
+          followUpNotifiedAt: null,
+        }),
         ...(input.note && {
           notes: [target.notes, input.note].filter(Boolean).join("\n"),
         }),
