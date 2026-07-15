@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BellRing,
   BookOpen,
   Briefcase,
   Compass,
@@ -40,6 +41,7 @@ const navGroups = [
     items: [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { title: "Strategist Chat", href: "/chat", icon: MessageSquare },
+      { title: "Reminders", href: "/reminders", icon: BellRing },
     ],
   },
   {
