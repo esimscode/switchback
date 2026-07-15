@@ -86,6 +86,12 @@ enum DecisionType {
   PROJECT_FOCUS
 }
 
+enum ReminderStatus {
+  PENDING
+  DONE
+  CANCELLED
+}
+
 // ---------- Models ----------
 
 model User {
@@ -110,6 +116,7 @@ model User {
   agentOutputs       AgentOutput[]
   notifications      Notification[]
   sourcingRuns       SourcingRun[]
+  reminders          Reminder[]
 
   @@map("users")
 }
@@ -197,6 +204,7 @@ model Application {
   contact           String?
   status            ApplicationStatus  @default(SAVED)
   followUpDate      DateTime?          @map("follow_up_date")
+  followUpNotifiedAt DateTime?         @map("follow_up_notified_at")
   salaryRange       String?            @map("salary_range")
   link              String?
   notes             String?
@@ -422,7 +430,7 @@ model SourcingRun {
 model Notification {
   id        String    @id @default(cuid())
   userId    String    @map("user_id")
-  type      String // "leads_reviewed" | "analysis_ready"
+  type      String // "leads_reviewed" | "analysis_ready" | "reminder_due" | "followup_due"
   title     String
   href      String?
   readAt    DateTime? @map("read_at")
@@ -432,6 +440,25 @@ model Notification {
 
   @@index([userId, readAt])
   @@map("notifications")
+}
+
+// Agent- or user-set nudges. A daily scan surfaces due ones (notifiedAt marks
+// each as surfaced exactly once) into a Notification + the email digest.
+model Reminder {
+  id         String         @id @default(cuid())
+  userId     String         @map("user_id")
+  text       String
+  dueDate    DateTime       @map("due_date")
+  link       String?
+  status     ReminderStatus @default(PENDING)
+  source     String?
+  notifiedAt DateTime?      @map("notified_at")
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, dueDate])
+  @@map("reminders")
 }
 
 // Landing-page waitlist: people interested in a hosted/cloud Switchback.
