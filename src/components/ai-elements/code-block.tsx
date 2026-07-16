@@ -141,11 +141,8 @@ const tokensCache = new Map<string, TokenizedCode>();
 // Subscribers for async token updates
 const subscribers = new Map<string, Set<(result: TokenizedCode) => void>>();
 
-const getTokensCacheKey = (code: string, language: BundledLanguage) => {
-  const start = code.slice(0, 100);
-  const end = code.length > 100 ? code.slice(-100) : "";
-  return `${language}:${code.length}:${start}:${end}`;
-};
+const getTokensCacheKey = (code: string, language: BundledLanguage) =>
+  `${language}\0${code}`;
 
 const getHighlighter = (
   language: BundledLanguage
@@ -189,9 +186,11 @@ export const highlightCode = (
 ): TokenizedCode | null => {
   const tokensCacheKey = getTokensCacheKey(code, language);
 
-  // Return cached result if available
+  // Return cached result if available. Also notify the callback: a caller may
+  // hit the cache in an effect after rendering with a stale (null) sync lookup.
   const cached = tokensCache.get(tokensCacheKey);
   if (cached) {
+    callback?.(cached);
     return cached;
   }
 

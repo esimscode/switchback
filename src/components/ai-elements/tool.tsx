@@ -138,18 +138,19 @@ export const ToolOutput = ({
   errorText,
   ...props
 }: ToolOutputProps) => {
-  if (!(output || errorText)) {
+  // Only undefined means "no output" — 0, false, "", and null are valid results.
+  if (output === undefined && !errorText) {
     return null;
   }
 
   let Output = <div>{output as ReactNode}</div>;
 
-  if (typeof output === "object" && !isValidElement(output)) {
+  if (typeof output === "string") {
+    Output = <CodeBlock code={output} language="json" />;
+  } else if (output !== undefined && !isValidElement(output)) {
     Output = (
       <CodeBlock code={JSON.stringify(output, null, 2)} language="json" />
     );
-  } else if (typeof output === "string") {
-    Output = <CodeBlock code={output} language="json" />;
   }
 
   return (

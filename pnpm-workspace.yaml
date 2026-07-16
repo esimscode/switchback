@@ -1,3 +1,10 @@
-ignoredBuiltDependencies:
-  - sharp
-  - unrs-resolver
+allowBuilds:
+  '@mongodb-js/zstd': false
+  '@prisma/client': true
+  '@prisma/engines': true
+  core-js: false
+  esbuild: true
+  node-liblzma: false
+  prisma: true
+  sharp: false
+  unrs-resolver: false

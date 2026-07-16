@@ -61,15 +61,6 @@
     "tsx": "^4.23.0",
     "typescript": "^5"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "prisma",
-      "@prisma/client",
-      "@prisma/engines",
-      "esbuild",
-      "sharp"
-    ]
-  },
   "engines": {
     "node": "24.x"
   }

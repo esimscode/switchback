@@ -1,10 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  ScrollArea,
-  ScrollBar,
-} from "@/components/ui/scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { ComponentProps } from "react";
 import { useCallback } from "react";
@@ -17,10 +14,12 @@ export const Suggestions = ({
   ...props
 }: SuggestionsProps) => (
   <ScrollArea className="w-full overflow-x-auto whitespace-nowrap" {...props}>
+    {/* No ScrollBar child: ScrollArea wraps children in its Viewport, and a
+        scrollbar nested inside the viewport violates Radix's tree structure.
+        The bar was hidden anyway; wheel/touch scrolling works without it. */}
     <div className={cn("flex w-max flex-nowrap items-center gap-2", className)}>
       {children}
     </div>
-    <ScrollBar className="hidden" orientation="horizontal" />
   </ScrollArea>
 );
 

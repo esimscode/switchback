@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { ExternalLink, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 import { useEveAgent } from "eve/react";
 import type { HandleMessageStreamEvent, SessionState } from "eve/client";
 import type { EveMessagePart } from "eve/client";
@@ -19,6 +20,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Conversation,
   ConversationContent,
@@ -99,15 +106,71 @@ function toolTitle(toolName: string): string {
 
 export function StrategistChat() {
   const saved = useSyncExternalStore(emptySubscribe, readSavedChat, () => null);
+  // Bumping the key remounts ChatSession, which recreates the eve agent store
+  // from the (now cleared) saved snapshot — the equivalent of agent.reset().
+  const [sessionKey, setSessionKey] = useState(0);
+
+  const resetChat = () => {
+    window.localStorage.removeItem(STORAGE_KEY);
+    savedChatCache = {};
+    setSessionKey((key) => key + 1);
+  };
 
   return (
     <div className="flex h-svh flex-col">
       <PageHeader
         title="Strategist Chat"
         description="A strategist who knows your positioning and protects your credibility."
+        actions={<NewChatButton onConfirm={resetChat} />}
       />
-      {saved !== null ? <ChatSession saved={saved} /> : null}
+      {saved !== null ? <ChatSession key={sessionKey} saved={saved} /> : null}
     </div>
+  );
+}
+
+function NewChatButton({ onConfirm }: { onConfirm: () => void }) {
+  return (
+    <Dialog>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="New chat"
+                className="rounded-full text-muted-foreground"
+              >
+                <RotateCcw />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>New chat</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Start a new chat?</DialogTitle>
+          <DialogDescription>
+            This clears the current conversation. The strategist keeps its
+            saved memories — only this thread goes away.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Keep chatting
+            </Button>
+          </DialogClose>
+          <DialogClose asChild>
+            <Button type="button" onClick={onConfirm}>
+              Clear and start fresh
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -188,11 +251,6 @@ function ChatSession({ saved }: { saved: SavedChat }) {
     void agent.send({ message: text });
   };
 
-  const resetChat = () => {
-    window.localStorage.removeItem(STORAGE_KEY);
-    agent.reset();
-  };
-
   return (
     <>
       <Conversation>
@@ -237,48 +295,19 @@ function ChatSession({ saved }: { saved: SavedChat }) {
             </p>
           ) : null}
         </ConversationContent>
+        {/* Messages fade out as they slide behind the input area. Rendered
+            before the scroll button so the button stays crisp above it. */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-background to-transparent backdrop-blur-[1px] [mask-image:linear-gradient(to_top,black_25%,transparent)]" />
         <ConversationScrollButton />
       </Conversation>
 
       <div className="border-t bg-background px-6 py-4">
-        <div className="mx-auto flex max-w-2xl items-end gap-2">
-          {agent.data.messages.length > 0 ? (
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="shrink-0 self-center text-muted-foreground"
-                >
-                  <RotateCcw />
-                  New chat
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-sm">
-                <DialogHeader>
-                  <DialogTitle>Start a new chat?</DialogTitle>
-                  <DialogDescription>
-                    This clears the current conversation. The strategist keeps
-                    its saved memories — only this thread goes away.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button type="button" variant="outline">
-                      Keep chatting
-                    </Button>
-                  </DialogClose>
-                  <DialogClose asChild>
-                    <Button type="button" onClick={resetChat}>
-                      Clear and start fresh
-                    </Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          ) : null}
+        <div className="mx-auto max-w-2xl">
           <PromptInput
+            maxFiles={0}
+            onError={() => {
+              toast.error("Attachments aren't supported yet.");
+            }}
             onSubmit={(message: PromptInputMessage) => {
               send(message.text);
             }}
