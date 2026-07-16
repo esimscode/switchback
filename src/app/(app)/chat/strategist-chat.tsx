@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
-import { ExternalLink, RotateCcw } from "lucide-react";
+import { ExternalLink, Paperclip, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import type { FileUIPart, UserContent } from "ai";
 import { useEveAgent } from "eve/react";
 import type { HandleMessageStreamEvent, SessionState } from "eve/client";
 import type { EveMessagePart } from "eve/client";
@@ -23,7 +24,6 @@ import {
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
@@ -39,12 +39,21 @@ import {
 import {
   PromptInput,
   PromptInputBody,
+  PromptInputButton,
   PromptInputFooter,
+  PromptInputHeader,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
+  usePromptInputAttachments,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
+import {
+  Attachment,
+  AttachmentPreview,
+  AttachmentRemove,
+  Attachments,
+} from "@/components/ai-elements/attachments";
 import {
   Tool,
   ToolContent,
@@ -104,6 +113,22 @@ function toolTitle(toolName: string): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+// eve's send accepts AI SDK UserContent, so attachments travel as file parts
+// with data: URLs (PromptInput converts blobs before onSubmit fires). Images
+// go as 'file' parts too — eve's endpoint rejects 'image' parts.
+function toUserContent(text: string, files: FileUIPart[]): string | UserContent {
+  if (files.length === 0) return text;
+  return [
+    ...(text.length > 0 ? [{ type: "text" as const, text }] : []),
+    ...files.map((file) => ({
+      type: "file" as const,
+      data: file.url,
+      mediaType: file.mediaType ?? "application/octet-stream",
+      filename: file.filename,
+    })),
+  ];
+}
+
 export function StrategistChat() {
   const saved = useSyncExternalStore(emptySubscribe, readSavedChat, () => null);
   // Bumping the key remounts ChatSession, which recreates the eve agent store
@@ -131,24 +156,22 @@ export function StrategistChat() {
 function NewChatButton({ onConfirm }: { onConfirm: () => void }) {
   return (
     <Dialog>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DialogTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="New chat"
-                className="rounded-full text-muted-foreground"
-              >
-                <RotateCcw />
-              </Button>
-            </DialogTrigger>
-          </TooltipTrigger>
-          <TooltipContent>New chat</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DialogTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="New chat"
+              className="rounded-full text-muted-foreground"
+            >
+              <RotateCcw />
+            </Button>
+          </DialogTrigger>
+        </TooltipTrigger>
+        <TooltipContent>New chat</TooltipContent>
+      </Tooltip>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Start a new chat?</DialogTitle>
@@ -225,6 +248,39 @@ function MessagePartView({ part, role }: { part: EveMessagePart; role: "assistan
   return null;
 }
 
+// Both must render inside PromptInput — the attachments hook reads its context.
+function AttachmentsRow() {
+  const attachments = usePromptInputAttachments();
+  if (attachments.files.length === 0) return null;
+  return (
+    <Attachments variant="inline">
+      {attachments.files.map((file) => (
+        <Attachment
+          key={file.id}
+          data={file}
+          onRemove={() => attachments.remove(file.id)}
+        >
+          <AttachmentPreview />
+          <AttachmentRemove />
+        </Attachment>
+      ))}
+    </Attachments>
+  );
+}
+
+function AttachButton() {
+  const attachments = usePromptInputAttachments();
+  return (
+    <PromptInputButton
+      aria-label="Attach image or PDF"
+      tooltip="Attach image or PDF"
+      onClick={() => attachments.openFileDialog()}
+    >
+      <Paperclip />
+    </PromptInputButton>
+  );
+}
+
 function ChatSession({ saved }: { saved: SavedChat }) {
   const agent = useEveAgent({
     auth: { bearer: getEveToken },
@@ -244,11 +300,11 @@ function ChatSession({ saved }: { saved: SavedChat }) {
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
   const error = agent.error && agent.error !== dismissedError ? agent.error : null;
 
-  const send = (message: string) => {
+  const send = (message: string, files: FileUIPart[] = []) => {
     const text = message.trim();
-    if (text.length === 0 || isBusy) return;
+    if ((text.length === 0 && files.length === 0) || isBusy) return;
     setDismissedError(agent.error ?? null);
-    void agent.send({ message: text });
+    void agent.send({ message: toUserContent(text, files) });
   };
 
   return (
@@ -304,14 +360,26 @@ function ChatSession({ saved }: { saved: SavedChat }) {
       <div className="border-t bg-background px-6 py-4">
         <div className="mx-auto max-w-2xl">
           <PromptInput
-            maxFiles={0}
-            onError={() => {
-              toast.error("Attachments aren't supported yet.");
+            accept="image/*,application/pdf"
+            multiple
+            maxFiles={4}
+            maxFileSize={10 * 1024 * 1024}
+            onError={(err) => {
+              toast.error(
+                err.code === "max_file_size"
+                  ? "Attachments must be under 10 MB."
+                  : err.code === "max_files"
+                    ? "Up to 4 attachments per message."
+                    : "Only images and PDFs are supported.",
+              );
             }}
             onSubmit={(message: PromptInputMessage) => {
-              send(message.text);
+              send(message.text, message.files);
             }}
           >
+            <PromptInputHeader>
+              <AttachmentsRow />
+            </PromptInputHeader>
             <PromptInputBody>
               <PromptInputTextarea
                 placeholder="Ask your strategist…"
@@ -319,7 +387,9 @@ function ChatSession({ saved }: { saved: SavedChat }) {
               />
             </PromptInputBody>
             <PromptInputFooter>
-              <PromptInputTools />
+              <PromptInputTools>
+                <AttachButton />
+              </PromptInputTools>
               <PromptInputSubmit
                 status={error ? "error" : agent.status}
                 onStop={agent.stop}
