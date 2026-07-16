@@ -25,6 +25,13 @@ export default defineTool({
       orderBy: { dueDate: "asc" },
       select: { id: true, text: true, dueDate: true, link: true, status: true, notifiedAt: true },
     });
-    return { reminders, viewAt: "/reminders" };
+    return {
+      reminders: reminders.map((reminder) => ({
+        ...reminder,
+        dueDate: reminder.dueDate.toISOString(),
+        notifiedAt: reminder.notifiedAt?.toISOString() ?? null,
+      })),
+      viewAt: "/reminders",
+    };
   },
 });
