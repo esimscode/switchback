@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowUp, RotateCcw, Wrench } from "lucide-react";
-import Markdown from "react-markdown";
+import { useState, useSyncExternalStore } from "react";
+import { ExternalLink, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 import { useEveAgent } from "eve/react";
 import type { HandleMessageStreamEvent, SessionState } from "eve/client";
+import type { EveMessagePart } from "eve/client";
 
 import { getEveToken } from "@/lib/auth/client";
 import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,7 +20,42 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Conversation,
+  ConversationContent,
+  ConversationScrollButton,
+} from "@/components/ai-elements/conversation";
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from "@/components/ai-elements/message";
+import {
+  PromptInput,
+  PromptInputBody,
+  PromptInputFooter,
+  PromptInputSubmit,
+  PromptInputTextarea,
+  PromptInputTools,
+  type PromptInputMessage,
+} from "@/components/ai-elements/prompt-input";
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool";
+import {
+  Suggestion,
+  Suggestions,
+} from "@/components/ai-elements/suggestion";
 
 const STORAGE_KEY = "switchback-chat";
 // Pre-rename key; drained into STORAGE_KEY on first read so saved chats survive.
@@ -63,18 +98,131 @@ function readSavedChat(): SavedChat {
   return savedChatCache;
 }
 
+// "source_job_leads" → "Source job leads"
+function toolTitle(toolName: string): string {
+  const words = toolName.replaceAll(/[_-]/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function StrategistChat() {
   const saved = useSyncExternalStore(emptySubscribe, readSavedChat, () => null);
+  // Bumping the key remounts ChatSession, which recreates the eve agent store
+  // from the (now cleared) saved snapshot — the equivalent of agent.reset().
+  const [sessionKey, setSessionKey] = useState(0);
+
+  const resetChat = () => {
+    window.localStorage.removeItem(STORAGE_KEY);
+    savedChatCache = {};
+    setSessionKey((key) => key + 1);
+  };
 
   return (
     <div className="flex h-svh flex-col">
       <PageHeader
         title="Strategist Chat"
         description="A strategist who knows your positioning and protects your credibility."
+        actions={<NewChatButton onConfirm={resetChat} />}
       />
-      {saved !== null ? <ChatSession saved={saved} /> : null}
+      {saved !== null ? <ChatSession key={sessionKey} saved={saved} /> : null}
     </div>
   );
+}
+
+function NewChatButton({ onConfirm }: { onConfirm: () => void }) {
+  return (
+    <Dialog>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="New chat"
+                className="rounded-full text-muted-foreground"
+              >
+                <RotateCcw />
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent>New chat</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Start a new chat?</DialogTitle>
+          <DialogDescription>
+            This clears the current conversation. The strategist keeps its
+            saved memories — only this thread goes away.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button type="button" variant="outline">
+              Keep chatting
+            </Button>
+          </DialogClose>
+          <DialogClose asChild>
+            <Button type="button" onClick={onConfirm}>
+              Clear and start fresh
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MessagePartView({ part, role }: { part: EveMessagePart; role: "assistant" | "user" }) {
+  if (part.type === "text") {
+    return role === "user" ? (
+      <MessageContent>{part.text}</MessageContent>
+    ) : (
+      <MessageContent>
+        <MessageResponse>{part.text}</MessageResponse>
+      </MessageContent>
+    );
+  }
+  if (part.type === "dynamic-tool") {
+    return (
+      <Tool className="mb-0">
+        <ToolHeader
+          type="dynamic-tool"
+          state={part.state}
+          toolName={part.toolName}
+          title={toolTitle(part.toolName)}
+        />
+        <ToolContent>
+          <ToolInput input={part.input} />
+          <ToolOutput
+            output={part.state === "output-available" ? part.output : undefined}
+            errorText={part.state === "output-error" ? part.errorText : undefined}
+          />
+        </ToolContent>
+      </Tool>
+    );
+  }
+  if (part.type === "authorization") {
+    return (
+      <div className="w-fit rounded-md border px-4 py-3 text-sm">
+        <p>
+          {part.state === "required"
+            ? `${part.displayName} needs authorization to continue.`
+            : `${part.displayName} authorization ${part.outcome}.`}
+        </p>
+        {part.state === "required" && part.authorization?.url ? (
+          <Button asChild size="sm" className="mt-2">
+            <a href={part.authorization.url} target="_blank" rel="noreferrer">
+              Authorize
+              <ExternalLink data-icon="inline-end" />
+            </a>
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
+  return null;
 }
 
 function ChatSession({ saved }: { saved: SavedChat }) {
@@ -90,96 +238,50 @@ function ChatSession({ saved }: { saved: SavedChat }) {
     },
   });
 
-  const [draft, setDraft] = useState("");
+  // Cleared on submit so a stale error doesn't keep the submit button in its
+  // error state for the whole next turn.
+  const [dismissedError, setDismissedError] = useState<Error | null>(null);
   const isBusy = agent.status === "submitted" || agent.status === "streaming";
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const messageCount = agent.data.messages.length;
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messageCount, agent.status]);
+  const error = agent.error && agent.error !== dismissedError ? agent.error : null;
 
   const send = (message: string) => {
     const text = message.trim();
     if (text.length === 0 || isBusy) return;
-    setDraft("");
+    setDismissedError(agent.error ?? null);
     void agent.send({ message: text });
-  };
-
-  const resetChat = () => {
-    window.localStorage.removeItem(STORAGE_KEY);
-    agent.reset();
   };
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="mx-auto flex max-w-2xl flex-col gap-6">
+      <Conversation>
+        <ConversationContent className="mx-auto w-full max-w-2xl gap-6 px-6 py-6">
           {agent.data.messages.length === 0 ? (
             <div className="flex flex-col items-start gap-4 pt-8">
               <p className="text-sm text-muted-foreground">
                 Start with your positioning, a decision you&apos;re weighing,
                 or what to build next.
               </p>
-              <div className="flex flex-wrap gap-2">
+              <Suggestions>
                 {SUGGESTED_PROMPTS.map((prompt) => (
-                  <Button
+                  <Suggestion
                     key={prompt}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => send(prompt)}
+                    suggestion={prompt}
+                    onClick={send}
                     className="hover:border-transparent hover:bg-block-lime hover:text-black dark:hover:bg-block-lime dark:hover:text-black"
-                  >
-                    {prompt}
-                  </Button>
+                  />
                 ))}
-              </div>
+              </Suggestions>
             </div>
           ) : (
             agent.data.messages.map((message) => (
-              <article key={message.id} className="space-y-2">
-                <p className="eyebrow text-muted-foreground">
+              <Message key={message.id} from={message.role} className="gap-1">
+                <p className="eyebrow text-muted-foreground group-[.is-user]:text-right">
                   {message.role === "user" ? "You" : "Strategist"}
                 </p>
-                {message.parts.map((part, index) => {
-                  if (part.type === "text") {
-                    return message.role === "user" ? (
-                      <p
-                        key={index}
-                        className="rounded-2xl rounded-tl-sm bg-secondary px-4 py-3 text-sm"
-                      >
-                        {part.text}
-                      </p>
-                    ) : (
-                      <div
-                        key={index}
-                        className="prose prose-sm max-w-none dark:prose-invert"
-                      >
-                        <Markdown>{part.text}</Markdown>
-                      </div>
-                    );
-                  }
-                  if (
-                    part.type === "dynamic-tool" ||
-                    part.type.startsWith("tool-")
-                  ) {
-                    const toolPart = part as { toolName?: string; state?: string };
-                    return (
-                      <Badge key={index} variant="secondary" className="gap-1">
-                        <Wrench data-icon="inline-start" />
-                        {toolPart.toolName ?? "tool"}
-                        <span className="text-muted-foreground">
-                          {toolPart.state === "output-available" ||
-                          toolPart.state === "output-error"
-                            ? "· done"
-                            : "· running"}
-                        </span>
-                      </Badge>
-                    );
-                  }
-                  return null;
-                })}
-              </article>
+                {message.parts.map((part, index) => (
+                  <MessagePartView key={index} part={part} role={message.role} />
+                ))}
+              </Message>
             ))
           )}
           {agent.status === "submitted" ? (
@@ -187,83 +289,45 @@ function ChatSession({ saved }: { saved: SavedChat }) {
               Thinking…
             </p>
           ) : null}
-          {agent.error ? (
+          {error ? (
             <p className="text-sm text-destructive">
-              Something went wrong: {agent.error.message}
+              Something went wrong: {error.message}
             </p>
           ) : null}
-          <div ref={bottomRef} />
-        </div>
-      </div>
+        </ConversationContent>
+        {/* Messages fade out as they slide behind the input area. Rendered
+            before the scroll button so the button stays crisp above it. */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-linear-to-t from-background to-transparent backdrop-blur-[1px] [mask-image:linear-gradient(to_top,black_25%,transparent)]" />
+        <ConversationScrollButton />
+      </Conversation>
 
       <div className="border-t bg-background px-6 py-4">
-        <form
-          className="mx-auto flex max-w-2xl items-end gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            send(draft);
-          }}
-        >
-          {agent.data.messages.length > 0 ? (
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="shrink-0 self-center text-muted-foreground"
-                >
-                  <RotateCcw />
-                  New chat
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-sm">
-                <DialogHeader>
-                  <DialogTitle>Start a new chat?</DialogTitle>
-                  <DialogDescription>
-                    This clears the current conversation. The strategist keeps
-                    its saved memories — only this thread goes away.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button type="button" variant="outline">
-                      Keep chatting
-                    </Button>
-                  </DialogClose>
-                  <DialogClose asChild>
-                    <Button type="button" onClick={resetChat}>
-                      Clear and start fresh
-                    </Button>
-                  </DialogClose>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          ) : null}
-          <Textarea
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                send(draft);
-              }
+        <div className="mx-auto max-w-2xl">
+          <PromptInput
+            maxFiles={0}
+            onError={() => {
+              toast.error("Attachments aren't supported yet.");
             }}
-            placeholder="Ask your strategist…"
-            disabled={isBusy}
-            rows={1}
-            className="max-h-40 min-h-10 resize-none rounded-3xl px-4 py-2.5 field-sizing-content"
-          />
-          <Button
-            type="submit"
-            size="icon"
-            aria-label="Send"
-            disabled={isBusy || draft.trim().length === 0}
-            className="size-10"
+            onSubmit={(message: PromptInputMessage) => {
+              send(message.text);
+            }}
           >
-            <ArrowUp />
-          </Button>
-        </form>
+            <PromptInputBody>
+              <PromptInputTextarea
+                placeholder="Ask your strategist…"
+                className="min-h-12"
+              />
+            </PromptInputBody>
+            <PromptInputFooter>
+              <PromptInputTools />
+              <PromptInputSubmit
+                status={error ? "error" : agent.status}
+                onStop={agent.stop}
+                className="rounded-full"
+              />
+            </PromptInputFooter>
+          </PromptInput>
+        </div>
       </div>
     </>
   );

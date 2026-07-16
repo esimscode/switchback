@@ -9,6 +9,11 @@
 @import "@neondatabase/auth-ui/tailwind";
 @plugin "@tailwindcss/typography";
 
+/* Streamdown (AI Elements message markdown) ships Tailwind classes in its
+   dist; without these @source entries they get purged from the build. */
+@source "../../node_modules/streamdown/dist/*.js";
+@source "../../node_modules/@streamdown/*/dist/*.js";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
