@@ -36,6 +36,11 @@ export default defineTool({
         ...(link !== undefined && { link }),
       },
     });
-    return { updated: true, id, dueDate: updated.dueDate, viewAt: "/reminders" };
+    return {
+      updated: true,
+      id,
+      dueDate: updated.dueDate.toISOString(),
+      viewAt: "/reminders",
+    };
   },
 });

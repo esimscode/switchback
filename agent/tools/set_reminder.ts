@@ -22,6 +22,11 @@ export default defineTool({
     const reminder = await prisma.reminder.create({
       data: { userId: user.id, text, dueDate: due, link, source: "strategist chat" },
     });
-    return { saved: true, id: reminder.id, dueDate: reminder.dueDate, viewAt: "/reminders" };
+    return {
+      saved: true,
+      id: reminder.id,
+      dueDate: reminder.dueDate.toISOString(),
+      viewAt: "/reminders",
+    };
   },
 });
