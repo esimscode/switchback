@@ -5,6 +5,12 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth } from "@/lib/auth/server";
 import { prisma } from "@/lib/db";
 
+// Every workspace route is session-gated, so static prerendering can never
+// succeed. Declaring that up front stops `next build` from attempting it and
+// hitting cookies() mid-render — which neon-auth logged as a scary (but
+// harmless) "Cookie validation error" for each route on every build.
+export const dynamic = "force-dynamic";
+
 // proxy.ts guarantees a session exists; this guards *which* account it is.
 // Sign-up against the Neon Auth service stays open until disabled in the
 // Neon config, so AUTH_ALLOWED_EMAILS pins the workspace to its owner.
